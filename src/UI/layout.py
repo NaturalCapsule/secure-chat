@@ -5,6 +5,8 @@ from UI.widgets import *
 
 
 def ui_layout(messages):
+    message_area.text = lambda: "\n".join(messages)
+
     ui = HSplit(
         [
             VSplit(
@@ -20,7 +22,8 @@ def ui_layout(messages):
                 height=2,
             ),
             seperator_3,
-            Window(FormattedTextControl(lambda: "\n".join(messages)), wrap_lines=True),
+            # Window(FormattedTextControl(lambda: "\n".join(messages)), wrap_lines=True),
+            message_scroll,
             seperator_2,
             VSplit([chat_indicator, buffer_control]),
         ]

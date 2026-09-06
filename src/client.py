@@ -1,9 +1,6 @@
 import socket
-import sys
-import threading
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from encryption import Encryption
-from threads import get_messages, messages
 from shutdown import shutdown_socket
 
 from UI.main import *

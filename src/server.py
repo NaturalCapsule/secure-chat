@@ -12,7 +12,7 @@ PORT = 6787
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(("0.0.0.0", PORT))
-server.settimeout(5.0)
+# server.settimeout(5.0)
 server.listen()
 
 print("Server is listening...")

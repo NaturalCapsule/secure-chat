@@ -1,15 +1,19 @@
 import socket
 
+messages = []
 
-def get_messages(client_socket, encryption):
+
+def get_messages(client_socket, encryption, invalidate):
     while True:
         data = client_socket.recv(4096)
 
+        if not data:
+            break
+
         data_decrypted = encryption.decrypt(data)
 
-        if data:
-            # print(data.decode())
-            print(data_decrypted)
+        messages.append(data_decrypted)
+        invalidate()
 
 
 def share_messages(message, sender, client_list, encryption):
@@ -25,13 +29,15 @@ def handle_client(client_socket, addr, client_list, encryption):
 
     while True:
         data = client_socket.recv(4096)
-        decrypted_data = encryption.decrypt(data)
-
         if not data:
             break
 
+        decrypted_data = encryption.decrypt(data)
+
         share_messages(decrypted_data, client_socket, client_list, encryption)
-        print(decrypted_data)
+        # print(decrypted_data)
+        messages.append(decrypted_data)
+        print(messages[-1])
 
     client_list.remove(client_socket)
     client_socket.shutdown(socket.SHUT_WR)

@@ -12,7 +12,6 @@ PORT = 6787
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(("0.0.0.0", PORT))
-# server.settimeout(5.0)
 server.listen()
 
 print("Server is listening...")
@@ -28,7 +27,12 @@ client_list = []
 while True:
     try:
         conn, addr = server.accept()
-        print(addr)
+
+        # Fix this
+        addr = ":".join(map(str, addr))
+
+        encrypted_server_addr = encryption.encrypt(addr)
+        conn.sendall(encrypted_server_addr)
 
         thread = threading.Thread(
             target=handle_client,
@@ -38,5 +42,9 @@ while True:
 
         thread.start()
     except KeyboardInterrupt:
-        shutdown_socket(server, encryption, "Server has disconnected")
-        print("Server Disconnected")
+        shutdown_socket(
+            server,
+            encryption,
+            "Server has disconnected.\nDisconnecting all users in",
+            client_list,
+        )

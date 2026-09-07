@@ -4,8 +4,10 @@ from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
 from UI.widgets import *
 
 
-def ui_layout(messages):
+def ui_layout(messages, server_ip):
     message_area.text = lambda: "\n".join(messages)
+
+    server_widget.text = "Server is being hosted on " + server_ip
 
     ui = HSplit(
         [
@@ -16,7 +18,8 @@ def ui_layout(messages):
             seperator_1,
             VSplit(
                 [
-                    Window(FormattedTextControl("Hello User!")),
+                    # Window(FormattedTextControl("Hello User!")),
+                    server_window,
                     Window(FormattedTextControl("This is a test!")),
                 ],
                 height=2,

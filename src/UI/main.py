@@ -7,18 +7,20 @@ from UI.keybinds import key_bindings_, kb
 
 import threading
 
-ui = ui_layout(messages)
 
-layout = Layout(ui)
+def run_app(
+    client_socket, encryption, username, shutdown_socket, quit_message, server_ip
+):
+    ui = ui_layout(messages, server_ip)
+    layout = Layout(ui)
 
-app = Application(layout=layout, key_bindings=kb, full_screen=True, mouse_support=True)
-
-
-def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
+    app = Application(
+        layout=layout, key_bindings=kb, full_screen=True, mouse_support=True
+    )
 
     threading.Thread(
         target=get_messages,
-        args=(client_socket, encryption, app.invalidate),
+        args=(client_socket, encryption, app),
         daemon=False,
     ).start()
 
@@ -32,4 +34,5 @@ def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
         quit_message,
         message_scroll,
     )
+
     app.run()

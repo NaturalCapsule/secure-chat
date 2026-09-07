@@ -22,9 +22,9 @@ def key_bindings_(
             shutdown_socket(client_socket, encryption, quit_message)
 
         message_time = datetime.datetime.now()
-        message_time = message_time.strftime("%H:%M:%S")
+        message_time = message_time.strftime("%I:%M %p")
 
-        messages.append(f"{message_time}\n{username} (You) > {input_buffer.text}\n")
+        messages.append(f"[{message_time}]\n{username} (You) > {input_buffer.text}\n")
 
         encrypted_data = encryption.encrypt(
             f"{message_time}\n{username} > {input_buffer.text}\n"

@@ -1,20 +1,26 @@
 import socket
-import datetime
+import time
 
 messages = []
 
 
-def get_messages(client_socket, encryption, invalidate):
+def get_messages(client_socket, encryption, app):
     while True:
         data = client_socket.recv(4096)
 
         if not data:
+            for i in range(3, 0, -1):
+                messages.append(f"{i}")
+                app.invalidate()
+                time.sleep(1)
+
+            app.exit()
             break
 
         data_decrypted = encryption.decrypt(data)
 
         messages.append(data_decrypted)
-        invalidate()
+        app.invalidate()
 
 
 def share_messages(message, sender, client_list, encryption):

@@ -1,17 +1,16 @@
+import threading
+
 from prompt_toolkit.application import Application
 from prompt_toolkit.layout.layout import Layout
 
+from UI.keybinds import kb, key_bindings_
 from UI.layout import *
-from threads import messages, get_messages
-from UI.keybinds import key_bindings_, kb
-
-import threading
+from threads import get_messages, messages, count_users
 
 
-def run_app(
-    client_socket, encryption, username, shutdown_socket, quit_message, server_ip
-):
-    ui = ui_layout(messages, server_ip)
+def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
+
+    ui = ui_layout(messages, count_users)
     layout = Layout(ui)
 
     app = Application(

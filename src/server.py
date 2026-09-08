@@ -28,23 +28,18 @@ while True:
     try:
         conn, addr = server.accept()
 
-        # Fix this
-        addr = ":".join(map(str, addr))
-
-        encrypted_server_addr = encryption.encrypt(addr)
-        conn.sendall(encrypted_server_addr)
-
         thread = threading.Thread(
             target=handle_client,
-            args=(conn, addr, client_list, encryption),
+            args=(conn, client_list, encryption),
             daemon=True,
         )
 
         thread.start()
-    except KeyboardInterrupt:
+
+    except (KeyboardInterrupt, OSError):
         shutdown_socket(
             server,
             encryption,
-            "Server has disconnected.\nDisconnecting all users in",
+            "CHAT|Server has disconnected.\nDisconnecting all users in",
             client_list,
         )

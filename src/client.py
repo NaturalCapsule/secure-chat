@@ -16,16 +16,15 @@ client_socket.connect((IP, PORT))
 key = bytes.fromhex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
 encryption = Encryption(key)
 
+# encrypted_server_addr = client_socket.recv(1024)
+# decrypted_server_addr = encryption.decrypt(encrypted_server_addr)
 
-encrypted_server_addr = client_socket.recv(1024)
-decrypted_server_addr = encryption.decrypt(encrypted_server_addr)
-
-print(decrypted_server_addr)
 
 username = input("enter your name: ")
-quit_message = f"{username} has Disconnected from the server"
 
-joined_message = f"{username} has joined the convo"
+quit_message = f"CHAT|{username} has Disconnected from the server"
+
+joined_message = f"CHAT|{username} has joined the convo"
 encrypted_join_message = encryption.encrypt(joined_message)
 
 client_socket.sendall(encrypted_join_message)
@@ -37,5 +36,4 @@ run_app(
     username,
     shutdown_socket,
     quit_message,
-    decrypted_server_addr,
 )

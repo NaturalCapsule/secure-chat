@@ -27,7 +27,7 @@ def key_bindings_(
         messages.append(f"[{message_time}]\n{username} (You) > {input_buffer.text}\n")
 
         encrypted_data = encryption.encrypt(
-            f"{message_time}\n{username} > {input_buffer.text}\n"
+            f"CHAT|[{message_time}]\n{username} > {input_buffer.text}\n"
         )
         client_socket.sendall(encrypted_data)
 

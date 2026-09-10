@@ -27,7 +27,11 @@ quit_message = f"CHAT|{username} has Disconnected from the server"
 joined_message = f"CHAT|{username} has joined the convo"
 encrypted_join_message = encryption.encrypt(joined_message)
 
-client_socket.sendall(encrypted_join_message)
+message_length = len(encrypted_join_message)
+header = message_length.to_bytes(4, byteorder="big")
+client_socket.sendall(header + encrypted_join_message)
+
+# client_socket.sendall(encrypted_join_message)
 
 
 run_app(

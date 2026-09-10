@@ -1,13 +1,42 @@
 import socket
 import time
+import sys
 
 messages = []
 count_users = []
 
 
+def recv_exact(sock, size):
+    data = b""
+
+    while len(data) < size:
+        chunk = sock.recv(size - len(data))
+
+        if not chunk:
+            return None
+
+        data += chunk
+
+    return data
+
+
 def get_messages(client_socket, encryption, app):
     while True:
-        data = client_socket.recv(4096)
+        # data = client_socket.recv(1024)
+        header = recv_exact(client_socket, 4)
+
+        if header is None:
+            for i in range(3, 0, -1):
+                messages.append(f"{i}")
+                app.invalidate()
+                time.sleep(1)
+
+            app.exit()
+            break
+
+        message_length = int.from_bytes(header, byteorder="big")
+
+        data = recv_exact(client_socket, message_length)
 
         if not data:
             for i in range(3, 0, -1):
@@ -19,31 +48,30 @@ def get_messages(client_socket, encryption, app):
             break
 
         data_decrypted = encryption.decrypt(data)
+        if data_decrypted.startswith("USER_COUNT|"):
+            count_users.append(data_decrypted[11:])
 
-        if data_decrypted[:11] == "USER_COUNT|":
-            data_decrypted = list(data_decrypted)
-            data_decrypted[:11] = ""
-            data_decrypted = "".join(data_decrypted)
-            count_users.append(data_decrypted)
-
-        elif data_decrypted[:5] == "CHAT|":
-            data_decrypted = list(data_decrypted)
-            data_decrypted[:5] = ""
-            data_decrypted = "".join(data_decrypted)
-
-            messages.append(data_decrypted)
+        elif data_decrypted.startswith("CHAT|"):
+            messages.append(data_decrypted[5:])
 
         app.invalidate()
 
 
 def share_messages(message, sender, client_list, encryption, sending_all=False):
-    for client in client_list:
+    try:
         encrypted_message = encryption.encrypt(message)
-        if sending_all:
-            client.sendall(encrypted_message)
+        message_length = len(encrypted_message)
+        header = message_length.to_bytes(4, byteorder="big")
 
-        if sender != client and not sending_all:
-            client.sendall(encrypted_message)
+        for client in client_list:
+            if sending_all:
+                client.sendall(header + encrypted_message)
+
+            if sender != client and not sending_all:
+                client.sendall(header + encrypted_message)
+
+    except BrokenPipeError:
+        sys.exit()
 
 
 def handle_client(client_socket, client_list, encryption):
@@ -52,13 +80,22 @@ def handle_client(client_socket, client_list, encryption):
     share_messages(clients_connected, client_socket, client_list, encryption, True)
 
     while True:
-        data = client_socket.recv(4096)
+        header = recv_exact(client_socket, 4)
+        if header is None:
+            break
+
+        message_length = int.from_bytes(header, byteorder="big")
+
+        data = recv_exact(client_socket, message_length)
+
         if not data:
+            sys.exit()
             break
 
         decrypted_data = encryption.decrypt(data)
 
         share_messages(decrypted_data, client_socket, client_list, encryption)
+
         messages.append(decrypted_data)
         print(messages[-1])
 

@@ -16,23 +16,31 @@ def key_bindings_(
 ):
     @kb.add("enter")
     def send(event):
+        if input_buffer.text != "" and input_buffer.text.strip():
+            if input_buffer.text == "<quit>":
+                shutdown_socket(client_socket, encryption, quit_message)
 
-        if input_buffer.text == "<quit>":
-            print("Disconnecting...")
-            shutdown_socket(client_socket, encryption, quit_message)
+            message_time = datetime.datetime.now()
+            message_time = message_time.strftime("%I:%M %p")
 
-        message_time = datetime.datetime.now()
-        message_time = message_time.strftime("%I:%M %p")
+            messages.append(
+                f"[{message_time}] {username} (You) > {input_buffer.text}\n"
+            )
 
-        messages.append(f"[{message_time}]\n{username} (You) > {input_buffer.text}\n")
+            encrypted_data = encryption.encrypt(
+                f"CHAT|[{message_time}] {username} > {input_buffer.text}\n"
+            )
 
-        encrypted_data = encryption.encrypt(
-            f"CHAT|[{message_time}]\n{username} > {input_buffer.text}\n"
-        )
-        client_socket.sendall(encrypted_data)
+            message_length = len(encrypted_data)
+            header = message_length.to_bytes(4, byteorder="big")
 
-        input_buffer.text = ""
-        input_buffer.reset()
+            client_socket.sendall(header + encrypted_data)
+
+            input_buffer.text = ""
+            input_buffer.reset()
+
+            if message_scroll.vertical_scroll + 2 == (len(messages) * 2) - 16:
+                message_scroll.vertical_scroll += 2
 
     @kb.add("c-q")
     def _(event):
@@ -42,11 +50,11 @@ def key_bindings_(
     @kb.add("up")
     def scroll_up(event):
         if message_scroll.vertical_scroll > 0:
-            message_scroll.vertical_scroll -= 1
+            message_scroll.vertical_scroll -= 2
             event.app.invalidate()
 
     @kb.add("down")
     def scroll_down(event):
-        if message_scroll.vertical_scroll < (len(messages) * 3) - 3:
-            message_scroll.vertical_scroll += 1
+        if message_scroll.vertical_scroll < (len(messages) * 2) - 16:
+            message_scroll.vertical_scroll += 2
             event.app.invalidate()

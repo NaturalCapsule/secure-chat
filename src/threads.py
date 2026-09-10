@@ -1,9 +1,9 @@
-import socket
 import time
 import sys
 
 messages = []
 count_users = []
+server_uptime = []
 
 
 def recv_exact(sock, size):
@@ -20,9 +20,31 @@ def recv_exact(sock, size):
     return data
 
 
+def UpTime(up_time_, client_list, encryption):
+    start = time.perf_counter()
+
+    while True:
+        elapsed = time.perf_counter() - start
+
+        hours = int(elapsed // 3600)
+        minutes = int((elapsed % 3600) // 60)
+        seconds = int(elapsed % 60)
+
+        up_time = f"SERVERUPTIME|{hours:02}:{minutes:02}:{seconds:02}"
+
+        if up_time_:
+            up_time_.pop()
+
+        up_time_.append(up_time)
+
+        if client_list:
+            share_messages(up_time_[-1], None, client_list, encryption, True)
+
+        time.sleep(1)
+
+
 def get_messages(client_socket, encryption, app):
     while True:
-        # data = client_socket.recv(1024)
         header = recv_exact(client_socket, 4)
 
         if header is None:
@@ -54,27 +76,29 @@ def get_messages(client_socket, encryption, app):
         elif data_decrypted.startswith("CHAT|"):
             messages.append(data_decrypted[5:])
 
+        elif data_decrypted.startswith("SERVERUPTIME|"):
+            server_uptime.append(data_decrypted[13:])
         app.invalidate()
 
 
-def share_messages(message, sender, client_list, encryption, sending_all=False):
+def share_messages(message, sender, client_list, encryption, sending_to_all=False):
     try:
         encrypted_message = encryption.encrypt(message)
         message_length = len(encrypted_message)
         header = message_length.to_bytes(4, byteorder="big")
 
         for client in client_list:
-            if sending_all:
+            if sending_to_all:
                 client.sendall(header + encrypted_message)
 
-            if sender != client and not sending_all:
+            if sender != client and not sending_to_all:
                 client.sendall(header + encrypted_message)
 
     except BrokenPipeError:
         sys.exit()
 
 
-def handle_client(client_socket, client_list, encryption):
+def handle_client(client_socket, client_list, encryption, up_time_):
     client_list.append(client_socket)
     clients_connected = "USER_COUNT|" + str(len(client_list))
     share_messages(clients_connected, client_socket, client_list, encryption, True)

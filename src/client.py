@@ -16,9 +16,6 @@ client_socket.connect((IP, PORT))
 key = bytes.fromhex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
 encryption = Encryption(key)
 
-# encrypted_server_addr = client_socket.recv(1024)
-# decrypted_server_addr = encryption.decrypt(encrypted_server_addr)
-
 
 username = input("enter your name: ")
 
@@ -31,13 +28,5 @@ message_length = len(encrypted_join_message)
 header = message_length.to_bytes(4, byteorder="big")
 client_socket.sendall(header + encrypted_join_message)
 
-# client_socket.sendall(encrypted_join_message)
 
-
-run_app(
-    client_socket,
-    encryption,
-    username,
-    shutdown_socket,
-    quit_message,
-)
+run_app(client_socket, encryption, username, shutdown_socket, quit_message)

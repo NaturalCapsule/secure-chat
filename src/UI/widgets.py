@@ -12,6 +12,9 @@ secure_chat_label = Window(FormattedTextControl("Secure-Chat"))
 usercount_widget = FormattedTextControl("")
 usercount_window = Window(usercount_widget, wrap_lines=True)
 
+server_uptime_widget = FormattedTextControl("")
+server_uptime_window = Window(content=server_uptime_widget)
+
 message_area = FormattedTextControl()
 message_window = Window(content=message_area, wrap_lines=True)
 message_scroll = ScrollablePane(message_window, show_scrollbar=True)

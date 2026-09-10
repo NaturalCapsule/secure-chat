@@ -1,13 +1,14 @@
-from prompt_toolkit.layout.containers import HSplit, Window, VSplit
-from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.containers import HSplit, VSplit
 
 from UI.widgets import *
 
 
-def ui_layout(messages, count_users):
+def ui_layout(messages, count_users, server_uptime):
     message_area.text = lambda: "\n".join(messages)
 
     usercount_widget.text = lambda: "Users " + count_users[-1]
+    server_uptime_widget.text = lambda: "Server UpTime: " + str(server_uptime[-1])
+
     ui = HSplit(
         [
             VSplit(
@@ -18,7 +19,7 @@ def ui_layout(messages, count_users):
             VSplit(
                 [
                     usercount_window,
-                    Window(FormattedTextControl("This is a test!")),
+                    server_uptime_window,
                 ],
                 height=2,
             ),

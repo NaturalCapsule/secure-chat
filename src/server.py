@@ -3,7 +3,6 @@ import threading
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from encryption import Encryption
-from get_ip import get_server_public_ip
 from threads import *
 from shutdown import shutdown_socket
 
@@ -20,9 +19,13 @@ print("Server is listening...")
 key = bytes.fromhex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff")
 encryption = Encryption(key)
 
-
-get_server_public_ip()
 client_list = []
+
+up_time_ = []
+uptime_thread = threading.Thread(
+    target=UpTime, args=(up_time_, client_list, encryption)
+)
+uptime_thread.start()
 
 while True:
     try:
@@ -30,7 +33,7 @@ while True:
 
         thread = threading.Thread(
             target=handle_client,
-            args=(conn, client_list, encryption),
+            args=(conn, client_list, encryption, up_time_),
             daemon=True,
         )
 

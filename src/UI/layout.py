@@ -18,8 +18,8 @@ def ui_layout(messages, count_users, server_uptime):
             seperator_1,
             VSplit(
                 [
-                    usercount_window,
                     server_uptime_window,
+                    usercount_window,
                 ],
                 height=2,
             ),

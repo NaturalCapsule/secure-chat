@@ -20,6 +20,9 @@ key = bytes.fromhex("00112233445566778899aabbccddeeff00112233445566778899aabbccd
 encryption = Encryption(key)
 
 client_list = []
+messages = []
+
+client_map = {}
 
 up_time_ = []
 uptime_thread = threading.Thread(
@@ -33,7 +36,7 @@ while True:
 
         thread = threading.Thread(
             target=handle_client,
-            args=(conn, client_list, encryption, up_time_),
+            args=(conn, client_list, encryption, up_time_, messages, client_map),
             daemon=True,
         )
 

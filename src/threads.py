@@ -1,5 +1,6 @@
 import time
 import sys
+import datetime
 
 messages = []
 count_users = []
@@ -76,6 +77,12 @@ def get_messages(client_socket, encryption, app):
         elif data_decrypted.startswith("CHAT|"):
             messages.append(data_decrypted[5:])
 
+        elif data_decrypted.startswith("USER_DISCONNECTED|"):
+            messages.append(data_decrypted[18:])
+
+        elif data_decrypted.startswith("USER_JOINED|"):
+            messages.append(data_decrypted[12:])
+
         elif data_decrypted.startswith("SERVERUPTIME|"):
             server_uptime.append(data_decrypted[13:])
         app.invalidate()
@@ -98,35 +105,77 @@ def share_messages(message, sender, client_list, encryption, sending_to_all=Fals
         sys.exit()
 
 
-def handle_client(client_socket, client_list, encryption, up_time_):
+def handle_client(
+    client_socket, client_list, encryption, up_time_, messages, client_map
+):
     client_list.append(client_socket)
     clients_connected = "USER_COUNT|" + str(len(client_list))
     share_messages(clients_connected, client_socket, client_list, encryption, True)
 
-    while True:
-        header = recv_exact(client_socket, 4)
-        if header is None:
-            break
-
+    header = recv_exact(client_socket, 4)
+    if header is not None:
         message_length = int.from_bytes(header, byteorder="big")
 
         data = recv_exact(client_socket, message_length)
 
-        if not data:
-            sys.exit()
-            break
-
         decrypted_data = encryption.decrypt(data)
 
-        share_messages(decrypted_data, client_socket, client_list, encryption)
+        if decrypted_data.startswith("LOGIN|"):
+            client_map[client_socket] = decrypted_data[6:]
 
-        messages.append(decrypted_data)
-        print(messages[-1])
+            print(client_map)
+            while True:
+                header = recv_exact(client_socket, 4)
+                if header is None:
+                    break
 
-    client_list.remove(client_socket)
-    # client_socket.shutdown(socket.SHUT_WR)
+                message_length = int.from_bytes(header, byteorder="big")
 
-    clients_connected = "USER_COUNT|" + str(len(client_list))
-    share_messages(clients_connected, client_socket, client_list, encryption, True)
+                data = recv_exact(client_socket, message_length)
 
-    client_socket.close()
+                if not data:
+                    sys.exit()
+                    break
+
+                decrypted_data = encryption.decrypt(data)
+
+                if decrypted_data.startswith("CHAT|"):
+                    decrypted_data = decrypted_data[5:]
+                    username = client_map[client_socket]
+                    message_flag = "CHAT|"
+
+                    message_time = datetime.datetime.now()
+                    message_time = message_time.strftime("%I:%M %p")
+
+                    message = (
+                        f"{message_flag}[{message_time}] {username} > {decrypted_data}"
+                    )
+
+                    print(message)
+
+                    messages.append(message)
+                    share_messages(message, client_socket, client_list, encryption)
+
+                elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED")):
+                    share_messages(
+                        decrypted_data, client_socket, client_list, encryption
+                    )
+
+                    print(decrypted_data)
+                    messages.append(decrypted_data)
+
+                else:
+                    messages.append(
+                        "Something went wrong with message flag...\ndid you change the source code?"
+                    )
+
+            client_list.remove(client_socket)
+            client_map.pop(client_socket)
+            # client_socket.shutdown(socket.SHUT_WR)
+
+            clients_connected = "USER_COUNT|" + str(len(client_list))
+            share_messages(
+                clients_connected, client_socket, client_list, encryption, True
+            )
+
+            client_socket.close()

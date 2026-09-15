@@ -27,9 +27,7 @@ def key_bindings_(
                 f"[{message_time}] {username} (You) > {input_buffer.text}\n"
             )
 
-            encrypted_data = encryption.encrypt(
-                f"CHAT|[{message_time}] {username} > {input_buffer.text}\n"
-            )
+            encrypted_data = encryption.encrypt(f"CHAT|{input_buffer.text}\n")
 
             message_length = len(encrypted_data)
             header = message_length.to_bytes(4, byteorder="big")

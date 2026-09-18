@@ -1,8 +1,10 @@
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
-from prompt_toolkit.layout import ScrollablePane, SearchBufferControl
-from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout import ScrollablePane
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.layout import Float, ConditionalContainer
 from prompt_toolkit.layout.containers import Window
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.widgets import Frame
 
 input_buffer = Buffer()
 
@@ -29,3 +31,22 @@ chat_indicator = Window(FormattedTextControl(text="> "), width=2)
 buffer_control = Window(
     content=BufferControl(buffer=input_buffer, focusable=True), height=1
 )
+
+user_list_widget = FormattedTextControl()
+
+user_list = Window(
+    content=user_list_widget,
+    width=30,
+    height=10,
+)
+
+
+def users_float_(show_users, floater_ui):
+
+    users_float = Float(
+        content=ConditionalContainer(
+            content=Frame(body=floater_ui, title="USERS ONLINE"),
+            filter=Condition(lambda: show_users[0]),
+        ),
+    )
+    return users_float

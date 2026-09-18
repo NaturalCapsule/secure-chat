@@ -1,6 +1,7 @@
 import datetime
 from prompt_toolkit.key_binding import KeyBindings
 
+
 kb = KeyBindings()
 
 
@@ -13,12 +14,20 @@ def key_bindings_(
     username,
     quit_message,
     message_scroll,
+    show_users,
 ):
     @kb.add("enter")
     def send(event):
         if input_buffer.text != "" and input_buffer.text.strip():
             if input_buffer.text == "<quit>":
                 shutdown_socket(client_socket, encryption, quit_message)
+
+            elif input_buffer.text == "<list_users>":
+                # show_userconnected(None)
+                show_users[0] = True
+                input_buffer.reset()
+                event.app.invalidate()
+                return
 
             message_time = datetime.datetime.now()
             message_time = message_time.strftime("%I:%M %p")
@@ -39,6 +48,11 @@ def key_bindings_(
 
             if message_scroll.vertical_scroll + 2 == (len(messages) * 2) - 16:
                 message_scroll.vertical_scroll += 2
+
+    @kb.add("c-y")
+    def hide_floater(event):
+        show_users[0] = False
+        event.app.invalidate()
 
     @kb.add("c-q")
     def _(event):

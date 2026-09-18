@@ -5,6 +5,7 @@ import datetime
 messages = []
 count_users = []
 server_uptime = []
+users_connected = []
 
 
 def recv_exact(sock, size):
@@ -85,6 +86,11 @@ def get_messages(client_socket, encryption, app):
 
         elif data_decrypted.startswith("SERVERUPTIME|"):
             server_uptime.append(data_decrypted[13:])
+
+        elif data_decrypted.startswith("USERS_CONNECTED|"):
+            data_decrypted = data_decrypted[16:]
+            users_connected.append(data_decrypted.split(","))
+
         app.invalidate()
 
 
@@ -122,6 +128,16 @@ def handle_client(
 
         if decrypted_data.startswith("LOGIN|"):
             client_map[client_socket] = decrypted_data[6:]
+
+            message_flag = "USERS_CONNECTED|"
+
+            userss = ""
+            for user in client_map.values():
+                userss += f"● {user},"
+
+            userss = message_flag + userss
+
+            share_messages(userss, client_socket, client_list, encryption, True)
 
             print(client_map)
             while True:
@@ -171,7 +187,14 @@ def handle_client(
 
             client_list.remove(client_socket)
             client_map.pop(client_socket)
-            # client_socket.shutdown(socket.SHUT_WR)
+
+            message_flag = "USERS_CONNECTED|"
+            userss = ""
+            for user in client_map.values():
+                userss += f"● {user},"
+
+            userss = message_flag + userss
+            share_messages(userss, client_socket, client_list, encryption, True)
 
             clients_connected = "USER_COUNT|" + str(len(client_list))
             share_messages(

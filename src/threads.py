@@ -22,7 +22,7 @@ def recv_exact(sock, size):
     return data
 
 
-def UpTime(up_time_, client_list, encryption):
+def UpTime(up_time_, client_list, client_map):
     start = time.perf_counter()
 
     while True:
@@ -34,13 +34,10 @@ def UpTime(up_time_, client_list, encryption):
 
         up_time = f"SERVERUPTIME|{hours:02}:{minutes:02}:{seconds:02}"
 
-        if up_time_:
-            up_time_.pop()
-
         up_time_.append(up_time)
 
-        if client_list:
-            share_messages(up_time_[-1], None, client_list, encryption, True)
+        if client_list and client_map:
+            share_messages(up_time, "server socket", client_map, client_list, True)
 
         time.sleep(1)
 
@@ -94,29 +91,30 @@ def get_messages(client_socket, encryption, app):
         app.invalidate()
 
 
-def share_messages(message, sender, client_list, encryption, sending_to_all=False):
+def share_messages(message, sender, client_map, client_list, sending_to_all=False):
     try:
-        encrypted_message = encryption.encrypt(message)
-        message_length = len(encrypted_message)
-        header = message_length.to_bytes(4, byteorder="big")
-
         for client in client_list:
-            if sending_to_all:
-                client.sendall(header + encrypted_message)
+            if not sending_to_all and sender == client:
+                continue
 
-            if sender != client and not sending_to_all:
-                client.sendall(header + encrypted_message)
+            encryption = client_map[client]["encryption"]
+
+            encrypted_message = encryption.encrypt(message)
+            message_length = len(encrypted_message)
+            header = message_length.to_bytes(4, byteorder="big")
+
+            client.sendall(header + encrypted_message)
 
     except BrokenPipeError:
         sys.exit()
 
 
 def handle_client(
-    client_socket, client_list, encryption, up_time_, messages, client_map
+    client_socket, client_list, encryption, up_time_, messages, client_map, up_time
 ):
+    share_messages(up_time_[-1], client_socket, client_map, client_list, True)
     client_list.append(client_socket)
     clients_connected = "USER_COUNT|" + str(len(client_list))
-    share_messages(clients_connected, client_socket, client_list, encryption, True)
 
     header = recv_exact(client_socket, 4)
     if header is not None:
@@ -127,26 +125,44 @@ def handle_client(
         decrypted_data = encryption.decrypt(data)
 
         if decrypted_data.startswith("LOGIN|"):
-            client_map[client_socket] = decrypted_data[6:]
+            client_map[client_socket] = {
+                "username": decrypted_data[6:],
+                "encryption": encryption,
+            }
 
+            share_messages(
+                clients_connected, client_socket, client_map, client_list, True
+            )
             message_flag = "USERS_CONNECTED|"
 
             userss = ""
             for user in client_map.values():
-                userss += f"● {user},"
+                userss += f"● {user['username']},"
 
             userss = message_flag + userss
 
-            share_messages(userss, client_socket, client_list, encryption, True)
+            share_messages(
+                userss,
+                client_socket,
+                client_map,
+                client_list,
+                True,
+            )
 
-            print(client_map)
             while True:
+                share_messages(
+                    up_time[-1],
+                    client_socket,
+                    client_map,
+                    client_list,
+                    True,
+                )
+
                 header = recv_exact(client_socket, 4)
                 if header is None:
                     break
 
                 message_length = int.from_bytes(header, byteorder="big")
-
                 data = recv_exact(client_socket, message_length)
 
                 if not data:
@@ -157,7 +173,7 @@ def handle_client(
 
                 if decrypted_data.startswith("CHAT|"):
                     decrypted_data = decrypted_data[5:]
-                    username = client_map[client_socket]
+                    username = client_map[client_socket]["username"]
                     message_flag = "CHAT|"
 
                     message_time = datetime.datetime.now()
@@ -170,11 +186,19 @@ def handle_client(
                     print(message)
 
                     messages.append(message)
-                    share_messages(message, client_socket, client_list, encryption)
+                    share_messages(
+                        message,
+                        client_socket,
+                        client_map,
+                        client_list,
+                    )
 
                 elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED")):
                     share_messages(
-                        decrypted_data, client_socket, client_list, encryption
+                        decrypted_data,
+                        client_socket,
+                        client_map,
+                        client_list,
                     )
 
                     print(decrypted_data)
@@ -191,14 +215,24 @@ def handle_client(
             message_flag = "USERS_CONNECTED|"
             userss = ""
             for user in client_map.values():
-                userss += f"● {user},"
+                userss += f"● {user['username']},"
 
             userss = message_flag + userss
-            share_messages(userss, client_socket, client_list, encryption, True)
+            share_messages(
+                userss,
+                client_socket,
+                client_map,
+                client_list,
+                True,
+            )
 
             clients_connected = "USER_COUNT|" + str(len(client_list))
             share_messages(
-                clients_connected, client_socket, client_list, encryption, True
+                clients_connected,
+                client_socket,
+                client_map,
+                client_list,
+                True,
             )
 
             client_socket.close()

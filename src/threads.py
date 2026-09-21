@@ -23,6 +23,8 @@ def recv_exact(sock, size):
 
 
 def UpTime(up_time_, client_list, client_map):
+    time.sleep(0.5)
+
     start = time.perf_counter()
 
     while True:
@@ -91,28 +93,28 @@ def get_messages(client_socket, encryption, app):
         app.invalidate()
 
 
-def share_messages(message, sender, client_map, client_list, sending_to_all=False):
+def share_messages(message, sender, client_map, sending_to_all=False):
     try:
-        for client in client_list:
+        for client, user in client_map.items():
             if not sending_to_all and sender == client:
                 continue
 
-            encryption = client_map[client]["encryption"]
+            encryption = user["encryption"]
 
             encrypted_message = encryption.encrypt(message)
+
             message_length = len(encrypted_message)
             header = message_length.to_bytes(4, byteorder="big")
 
             client.sendall(header + encrypted_message)
 
     except BrokenPipeError:
-        sys.exit()
+        pass
 
 
 def handle_client(
     client_socket, client_list, encryption, up_time_, messages, client_map, up_time
 ):
-    share_messages(up_time_[-1], client_socket, client_map, client_list, True)
     client_list.append(client_socket)
     clients_connected = "USER_COUNT|" + str(len(client_list))
 
@@ -130,9 +132,7 @@ def handle_client(
                 "encryption": encryption,
             }
 
-            share_messages(
-                clients_connected, client_socket, client_map, client_list, True
-            )
+            share_messages(clients_connected, client_socket, client_map, True)
             message_flag = "USERS_CONNECTED|"
 
             userss = ""
@@ -145,7 +145,6 @@ def handle_client(
                 userss,
                 client_socket,
                 client_map,
-                client_list,
                 True,
             )
 
@@ -154,7 +153,6 @@ def handle_client(
                     up_time[-1],
                     client_socket,
                     client_map,
-                    client_list,
                     True,
                 )
 
@@ -190,7 +188,6 @@ def handle_client(
                         message,
                         client_socket,
                         client_map,
-                        client_list,
                     )
 
                 elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED")):
@@ -198,7 +195,6 @@ def handle_client(
                         decrypted_data,
                         client_socket,
                         client_map,
-                        client_list,
                     )
 
                     print(decrypted_data)
@@ -222,7 +218,6 @@ def handle_client(
                 userss,
                 client_socket,
                 client_map,
-                client_list,
                 True,
             )
 
@@ -231,7 +226,6 @@ def handle_client(
                 clients_connected,
                 client_socket,
                 client_map,
-                client_list,
                 True,
             )
 

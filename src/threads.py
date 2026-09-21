@@ -39,7 +39,7 @@ def UpTime(up_time_, client_list, client_map):
         up_time_.append(up_time)
 
         if client_list and client_map:
-            share_messages(up_time, "server socket", client_map, client_list, True)
+            share_messages(up_time, "server socket", client_map, True)
 
         time.sleep(1)
 
@@ -199,11 +199,6 @@ def handle_client(
 
                     print(decrypted_data)
                     messages.append(decrypted_data)
-
-                else:
-                    messages.append(
-                        "Something went wrong with message flag...\ndid you change the source code?"
-                    )
 
             client_list.remove(client_socket)
             client_map.pop(client_socket)

@@ -44,9 +44,23 @@ header = key_length.to_bytes(4, byteorder="big")
 
 client_socket.sendall(header + encrypted_aes_key)
 
-username = input("enter your name: ")
+print("Press '1' for login or '2' for sign up")
 
-encrypted_join_message = encryption.encrypt(f"LOGIN|{username}")
+choice = int(input(""))
+
+if choice == 2:
+    message_flag = "REGISTER|"
+elif choice == 1:
+    message_flag = "LOGIN|"
+else:
+    print("Invalid choice")
+    client_socket.close()
+
+
+username = input("Enter name: ")
+password = input("Enter password: ")
+
+encrypted_join_message = encryption.encrypt(f"{message_flag}{username}\n{password}")
 
 message_length = len(encrypted_join_message)
 header = message_length.to_bytes(4, byteorder="big")

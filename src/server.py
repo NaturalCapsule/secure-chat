@@ -4,7 +4,7 @@ import threading
 from encryption import *
 from threads import *
 from shutdown import shutdown_socket
-
+from database import DataBase
 
 PORT = 6787
 
@@ -28,6 +28,8 @@ uptime_thread = threading.Thread(
     target=UpTime, args=(up_time_, client_list, client_map)
 )
 uptime_thread.start()
+
+database = DataBase("database.pb")
 
 while True:
     try:
@@ -64,6 +66,7 @@ while True:
                 messages,
                 client_map,
                 up_time_,
+                database,
             ),
             daemon=True,
         )
@@ -71,9 +74,11 @@ while True:
         thread.start()
 
     except (KeyboardInterrupt, OSError):
+        database.close_connection()
         shutdown_socket(
             server,
             encryption,
             "CHAT|Server has disconnected.\nDisconnecting all users in",
             client_list,
         )
+        sys.exit()

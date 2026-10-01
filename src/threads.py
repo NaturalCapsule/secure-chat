@@ -2,29 +2,34 @@ import time
 import sys
 import datetime
 
+from argon2 import PasswordHasher
+
 messages = []
 count_users = []
 server_uptime = []
 users_connected = []
 
+password_hasher = PasswordHasher()
+
 
 def recv_exact(sock, size):
     data = b""
+    try:
+        while len(data) < size:
+            chunk = sock.recv(size - len(data))
 
-    while len(data) < size:
-        chunk = sock.recv(size - len(data))
+            if not chunk:
+                return None
 
-        if not chunk:
-            return None
+            data += chunk
 
-        data += chunk
+        return data
 
-    return data
+    except OSError:
+        pass
 
 
 def UpTime(up_time_, client_list, client_map):
-    time.sleep(0.5)
-
     start = time.perf_counter()
 
     while True:
@@ -93,6 +98,15 @@ def get_messages(client_socket, encryption, app):
         app.invalidate()
 
 
+def send_message_to_client(message_flag, message, client_socket, encryption):
+    encrypted_message = encryption.encrypt(message_flag + message)
+
+    message_length = len(encrypted_message)
+    header = message_length.to_bytes(4, byteorder="big")
+
+    client_socket.sendall(header + encrypted_message)
+
+
 def share_messages(message, sender, client_map, sending_to_all=False):
     try:
         for client, user in client_map.items():
@@ -113,10 +127,16 @@ def share_messages(message, sender, client_map, sending_to_all=False):
 
 
 def handle_client(
-    client_socket, client_list, encryption, up_time_, messages, client_map, up_time
+    client_socket,
+    client_list,
+    encryption,
+    up_time_,
+    messages,
+    client_map,
+    up_time,
+    database,
 ):
-    client_list.append(client_socket)
-    clients_connected = "USER_COUNT|" + str(len(client_list))
+    username = ""
 
     header = recv_exact(client_socket, 4)
     if header is not None:
@@ -126,11 +146,76 @@ def handle_client(
 
         decrypted_data = encryption.decrypt(data)
 
-        if decrypted_data.startswith("LOGIN|"):
+        if decrypted_data.startswith(("LOGIN|", "REGISTER|")):
+            if decrypted_data.startswith("LOGIN|"):
+                credentials = decrypted_data[6:]
+            elif decrypted_data.startswith("REGISTER|"):
+                credentials = decrypted_data[9:]
+
+            credentials = credentials.split("\n")
+            username = credentials[0]
+            password = credentials[1]
+
+            password_hash = password_hasher.hash(password)
+
+            if decrypted_data.startswith("LOGIN|"):
+                try:
+                    _, _, password_ = database.get_user(username)
+                    password_hasher.verify(password_, password)
+                    print(f"Passed password verification for user '{username}'")
+                except Exception:
+                    print(
+                        f"Password and it's hash did not match for user '{username}'\nClosing users connection."
+                    )
+                    send_message_to_client(
+                        "CHAT|",
+                        f"Password and it's hash did not match for user '{username}'\nClosing connection in...",
+                        client_socket,
+                        encryption,
+                    )
+
+                    client_socket.close()
+                    return
+
+            for user in client_map.values():
+                if username in user["username"]:
+                    send_message_to_client(
+                        "CHAT|",
+                        "Found same username logged in. No duplicated username allowed\nClosing connection in...",
+                        client_socket,
+                        encryption,
+                    )
+                    print(
+                        f"Someone tried to login with a username that is already online in this session.\n Username '{username}'"
+                    )
+                    client_socket.close()
+                    return
+
+            if decrypted_data.startswith("REGISTER|"):
+                if database.find_name(username) is False:
+                    print(f"Successfully added '{username}' to the database!!")
+                    database.add_user(username, password_hash)
+                else:
+                    send_message_to_client(
+                        "CHAT|",
+                        "Found same username that is resgistered before\nMaybe you pressed the wrong option or entered wrong username??.\nClosing connection in...",
+                        client_socket,
+                        encryption,
+                    )
+                    print(
+                        f"Found same username that is resgistered before '{username}'"
+                    )
+                    client_socket.close()
+                    return
+
             client_map[client_socket] = {
-                "username": decrypted_data[6:],
+                "username": username,
+                "password": password,
                 "encryption": encryption,
             }
+
+            client_list.append(client_socket)
+            clients_connected = "USER_COUNT|" + str(len(client_list))
 
             share_messages(clients_connected, client_socket, client_map, True)
             message_flag = "USERS_CONNECTED|"
@@ -202,6 +287,8 @@ def handle_client(
 
             client_list.remove(client_socket)
             client_map.pop(client_socket)
+
+            # print(database.get_user(username))
 
             message_flag = "USERS_CONNECTED|"
             userss = ""

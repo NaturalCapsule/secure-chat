@@ -55,6 +55,7 @@ elif choice == 1:
 else:
     print("Invalid choice")
     client_socket.close()
+    sys.exit()
 
 
 username = input("Enter name: ")

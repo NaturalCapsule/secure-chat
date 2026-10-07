@@ -80,7 +80,15 @@ def get_messages(client_socket, encryption, app):
             count_users.append(data_decrypted[11:])
 
         elif data_decrypted.startswith("CHAT|"):
-            messages.append(data_decrypted[5:])
+            data_decrypted = data_decrypted[5:]
+            timestamp_string, message = data_decrypted.split("]", 1)
+            timestamp_string = timestamp_string[1:]
+            timestamp = datetime.datetime.fromisoformat(timestamp_string)
+            local_time = timestamp.astimezone()
+            formatted_time = local_time.strftime("%I:%M %p")
+            formatted_time = f"[{formatted_time}]"
+
+            messages.append(f"{formatted_time} {message}")
 
         elif data_decrypted.startswith("USER_DISCONNECTED|"):
             messages.append(data_decrypted[18:])
@@ -151,12 +159,24 @@ def handle_client(
                 credentials = decrypted_data[6:]
             elif decrypted_data.startswith("REGISTER|"):
                 credentials = decrypted_data[9:]
+            else:
+                client_socket.close()
+                return
 
-            credentials = credentials.split("\n")
+            credentials = credentials.split("\n", 1)
             username = credentials[0]
             password = credentials[1]
 
-            password_hash = password_hasher.hash(password)
+            if not username.strip() or not password.strip():
+                send_message_to_client(
+                    "CHAT|",
+                    "Detected blank username or password\nClosing connection in...",
+                    client_socket,
+                    encryption,
+                )
+                client_socket.close()
+                print("username or password was blank\nClosing users connection...\n")
+                return
 
             if decrypted_data.startswith("LOGIN|"):
                 try:
@@ -178,7 +198,7 @@ def handle_client(
                     return
 
             for user in client_map.values():
-                if username in user["username"]:
+                if username == user["username"]:
                     send_message_to_client(
                         "CHAT|",
                         "Found same username logged in. No duplicated username allowed\nClosing connection in...",
@@ -186,12 +206,14 @@ def handle_client(
                         encryption,
                     )
                     print(
-                        f"Someone tried to login with a username that is already online in this session.\n Username '{username}'"
+                        f"{client_socket} tried to login with a username that is already online in this session.\n Username '{username}'"
                     )
                     client_socket.close()
                     return
 
             if decrypted_data.startswith("REGISTER|"):
+                password_hash = password_hasher.hash(password)
+
                 if database.find_name(username) is False:
                     print(f"Successfully added '{username}' to the database!!")
                     database.add_user(username, password_hash)
@@ -203,14 +225,13 @@ def handle_client(
                         encryption,
                     )
                     print(
-                        f"Found same username that is resgistered before '{username}'"
+                        f"{client_socket} Found same username that is resgistered before '{username}'"
                     )
                     client_socket.close()
                     return
 
             client_map[client_socket] = {
                 "username": username,
-                "password": password,
                 "encryption": encryption,
             }
 
@@ -259,8 +280,7 @@ def handle_client(
                     username = client_map[client_socket]["username"]
                     message_flag = "CHAT|"
 
-                    message_time = datetime.datetime.now()
-                    message_time = message_time.strftime("%I:%M %p")
+                    message_time = datetime.datetime.now(datetime.UTC).isoformat()
 
                     message = (
                         f"{message_flag}[{message_time}] {username} > {decrypted_data}"
@@ -285,11 +305,6 @@ def handle_client(
                     print(decrypted_data)
                     messages.append(decrypted_data)
 
-            client_list.remove(client_socket)
-            client_map.pop(client_socket)
-
-            # print(database.get_user(username))
-
             message_flag = "USERS_CONNECTED|"
             userss = ""
             for user in client_map.values():
@@ -311,4 +326,6 @@ def handle_client(
                 True,
             )
 
+            client_list.remove(client_socket)
+            client_map.pop(client_socket)
             client_socket.close()

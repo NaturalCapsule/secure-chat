@@ -88,7 +88,7 @@ def get_messages(client_socket, encryption, app):
             formatted_time = local_time.strftime("%I:%M %p")
             formatted_time = f"[{formatted_time}]"
 
-            messages.append(f"{formatted_time} {message}")
+            messages.append(f"{formatted_time}{message}")
 
         elif data_decrypted.startswith("USER_DISCONNECTED|"):
             messages.append(data_decrypted[18:])
@@ -304,7 +304,10 @@ def handle_client(
                     print(decrypted_data)
                     messages.append(decrypted_data)
 
+            client_list.remove(client_socket)
+            client_map.pop(client_socket)
             message_flag = "USERS_CONNECTED|"
+
             userss = ""
             for user in client_map.values():
                 userss += f"● {user['username']},"
@@ -325,7 +328,5 @@ def handle_client(
                 True,
             )
 
-            client_list.remove(client_socket)
-            client_map.pop(client_socket)
             client_socket.close()
             return

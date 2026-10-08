@@ -11,7 +11,7 @@ from threads import recv_exact
 from UI.main import *
 
 PORT = 6787
-IP = "192.168.1.100"
+IP = "192.168.1.94"
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))

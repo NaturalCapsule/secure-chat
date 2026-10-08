@@ -60,6 +60,13 @@ class DataBase:
         self.conn.close()
 
     def get_user(self, username):
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL
+            )
+        """)
         cursor = self.conn.execute(
             """
             SELECT id, username, password
@@ -72,6 +79,14 @@ class DataBase:
         return cursor.fetchone()
 
     def find_name(self, name):
+        self.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL
+            )
+        """)
+
         self.cursor.execute(
             "SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)", (name,)
         )

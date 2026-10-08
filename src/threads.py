@@ -175,7 +175,7 @@ def handle_client(
                     encryption,
                 )
                 client_socket.close()
-                print("username or password was blank\nClosing users connection...\n")
+                print("username or password was blank\nClosing users connection.\n")
                 return
 
             if decrypted_data.startswith("LOGIN|"):
@@ -193,7 +193,6 @@ def handle_client(
                         client_socket,
                         encryption,
                     )
-
                     client_socket.close()
                     return
 
@@ -329,3 +328,4 @@ def handle_client(
             client_list.remove(client_socket)
             client_map.pop(client_socket)
             client_socket.close()
+            return

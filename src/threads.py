@@ -90,6 +90,10 @@ def get_messages(client_socket, encryption, app):
 
             messages.append(f"{formatted_time}{message}")
 
+        elif data_decrypted.startswith("SOCKET_CLOSING|"):
+            data_decrypted = data_decrypted[len("SOCKET_CLOSING|") :]
+            messages.append(data_decrypted)
+
         elif data_decrypted.startswith("USER_DISCONNECTED|"):
             messages.append(data_decrypted[18:])
 
@@ -169,11 +173,12 @@ def handle_client(
 
             if not username.strip() or not password.strip():
                 send_message_to_client(
-                    "CHAT|",
+                    "SOCKET_CLOSING|",
                     "Detected blank username or password\nClosing connection in...",
                     client_socket,
                     encryption,
                 )
+                time.sleep(1)
                 client_socket.close()
                 print("username or password was blank\nClosing users connection.\n")
                 return
@@ -188,25 +193,27 @@ def handle_client(
                         f"Password and it's hash did not match for user '{username}'\nClosing users connection."
                     )
                     send_message_to_client(
-                        "CHAT|",
+                        "SOCKET_CLOSING|",
                         f"Password and it's hash did not match for user '{username}'\nClosing connection in...",
                         client_socket,
                         encryption,
                     )
+                    time.sleep(1)
                     client_socket.close()
                     return
 
             for user in client_map.values():
                 if username == user["username"]:
                     send_message_to_client(
-                        "CHAT|",
+                        "SOCKET_CLOSING|",
                         "Found same username logged in. No duplicated username allowed\nClosing connection in...",
                         client_socket,
                         encryption,
                     )
                     print(
-                        f"{client_socket} tried to login with a username that is already online in this session.\n Username '{username}'"
+                        f"{client_socket} tried to login with a username that is already online in this session.\nUsername '{username}'"
                     )
+                    time.sleep(1)
                     client_socket.close()
                     return
 
@@ -218,7 +225,7 @@ def handle_client(
                     database.add_user(username, password_hash)
                 else:
                     send_message_to_client(
-                        "CHAT|",
+                        "SOCKET_CLOSING|",
                         "Found same username that is resgistered before\nMaybe you pressed the wrong option or entered wrong username??.\nClosing connection in...",
                         client_socket,
                         encryption,
@@ -226,6 +233,7 @@ def handle_client(
                     print(
                         f"{client_socket} Found same username that is resgistered before '{username}'"
                     )
+                    time.sleep(1)
                     client_socket.close()
                     return
 

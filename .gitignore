@@ -3,6 +3,8 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+src/database.pb
+
 # C extensions
 *.so
 

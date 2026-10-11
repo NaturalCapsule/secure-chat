@@ -21,6 +21,8 @@ public_key_bytes = serialize_public_key(private_key)
 client_list = []
 messages = []
 
+database = DataBase("database.pb")
+
 client_map = {}
 
 up_time_ = []
@@ -29,7 +31,10 @@ uptime_thread = threading.Thread(
 )
 uptime_thread.start()
 
-database = DataBase("database.pb")
+server_console_thread = threading.Thread(
+    target=server_console, daemon=False, args=(client_map, database.update_user)
+).start()
+
 
 while True:
     try:

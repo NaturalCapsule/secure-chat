@@ -19,12 +19,23 @@ def key_bindings_(
     @kb.add("enter")
     def send(event):
         if input_buffer.text != "" and input_buffer.text.strip():
-            if input_buffer.text == "<quit>":
+            if input_buffer.text.strip() == "/quit":
                 shutdown_socket(client_socket, encryption, quit_message)
 
-            elif input_buffer.text == "<list_users>":
+            elif input_buffer.text == "/list_users":
                 # show_userconnected(None)
                 show_users[0] = True
+                input_buffer.reset()
+                event.app.invalidate()
+                return
+
+            if input_buffer.text.startswith("/"):
+                encrypted_data = encryption.encrypt(f"COMMAND|{input_buffer.text}")
+
+                message_length = len(encrypted_data)
+                header = message_length.to_bytes(4, byteorder="big")
+                client_socket.sendall(header + encrypted_data)
+
                 input_buffer.reset()
                 event.app.invalidate()
                 return

@@ -11,7 +11,7 @@ from threads import recv_exact
 from UI.main import *
 
 PORT = 6787
-IP = "192.168.1.94"
+IP = "192.168.1.100"
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client_socket.connect((IP, PORT))
@@ -46,11 +46,11 @@ client_socket.sendall(header + encrypted_aes_key)
 
 print("Press '1' for login or '2' for sign up")
 
-choice = int(input(""))
+choice = input("")
 
-if choice == 2:
+if choice == "2":
     message_flag = "REGISTER|"
-elif choice == 1:
+elif choice == "1":
     message_flag = "LOGIN|"
 else:
     print("Invalid choice")

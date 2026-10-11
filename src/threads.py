@@ -3,13 +3,37 @@ import sys
 import datetime
 
 from argon2 import PasswordHasher
+from commands import *
 
 messages = []
 count_users = []
 server_uptime = []
 users_connected = []
 
+commands = ("/kick", "/mute", "/promote", "/demote")
+
 password_hasher = PasswordHasher()
+
+
+def server_console(client_map, update_user):
+    while True:
+        server_console_input = input("Server Console: ").strip()
+
+        if server_console_input.startswith("/promote"):
+            command = server_console_input.split(" ")
+            username = command[1].strip()
+            promote("server", client_map, "server", username, update_user, True)
+
+        elif server_console_input.startswith("/users"):
+            for client in client_map:
+                print("-" * 10)
+                print(client_map[client]["username"])
+                print(client_map[client]["role"])
+
+        elif server_console_input.startswith("/demote"):
+            command = server_console_input.split(" ")
+            username = command[1].strip()
+            promote("server", client_map, "server", username, update_user, True, False)
 
 
 def recv_exact(sock, size):
@@ -150,6 +174,8 @@ def handle_client(
 ):
     username = ""
 
+    user_joined_count, user_disconnected_count = 0, 0
+
     header = recv_exact(client_socket, 4)
     if header is not None:
         message_length = int.from_bytes(header, byteorder="big")
@@ -185,10 +211,12 @@ def handle_client(
 
             if decrypted_data.startswith("LOGIN|"):
                 try:
-                    _, _, password_ = database.get_user(username)
+                    userid, _, password_, role = database.get_user(username)
                     password_hasher.verify(password_, password)
                     print(f"Passed password verification for user '{username}'")
-                except Exception:
+
+                except Exception as e:
+                    print(e)
                     print(
                         f"Password and it's hash did not match for user '{username}'\nClosing users connection."
                     )
@@ -201,6 +229,40 @@ def handle_client(
                     time.sleep(1)
                     client_socket.close()
                     return
+
+            elif decrypted_data.startswith("REGISTER|"):
+                password_hash = password_hasher.hash(password)
+
+                if database.find_name(username) is False:
+                    database.add_user(username, password_hash)
+                    userid, _, password_, role = database.get_user(username)
+
+                else:
+                    send_message_to_client(
+                        "SOCKET_CLOSING|",
+                        "Found same username that is registered before\nMaybe you pressed the wrong option or entered wrong username??.\nClosing connection in...",
+                        client_socket,
+                        encryption,
+                    )
+                    print(
+                        f"{client_socket} Found same username that is registered before '{username}'"
+                    )
+                    time.sleep(1)
+                    client_socket.close()
+                    return
+            else:
+                send_message_to_client(
+                    "SOCKET_CLOSING|",
+                    "Invalid tag detected\nClosing connection in...",
+                    client_socket,
+                    encryption,
+                )
+                print(
+                    f"{client_socket} tried to join with an invalid tag\nClosed it's connection"
+                )
+                time.sleep(1)
+                client_socket.close()
+                return
 
             for user in client_map.values():
                 if username == user["username"]:
@@ -217,29 +279,11 @@ def handle_client(
                     client_socket.close()
                     return
 
-            if decrypted_data.startswith("REGISTER|"):
-                password_hash = password_hasher.hash(password)
-
-                if database.find_name(username) is False:
-                    print(f"Successfully added '{username}' to the database!!")
-                    database.add_user(username, password_hash)
-                else:
-                    send_message_to_client(
-                        "SOCKET_CLOSING|",
-                        "Found same username that is resgistered before\nMaybe you pressed the wrong option or entered wrong username??.\nClosing connection in...",
-                        client_socket,
-                        encryption,
-                    )
-                    print(
-                        f"{client_socket} Found same username that is resgistered before '{username}'"
-                    )
-                    time.sleep(1)
-                    client_socket.close()
-                    return
-
             client_map[client_socket] = {
+                "userID": userid,
                 "username": username,
                 "encryption": encryption,
+                "role": role,
             }
 
             client_list.append(client_socket)
@@ -302,7 +346,85 @@ def handle_client(
                         client_map,
                     )
 
-                elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED")):
+                elif decrypted_data.startswith("COMMAND|"):
+                    decrypted_data = decrypted_data[len("COMMAND|") :]
+                    command = decrypted_data.split(" ")
+                    user_username = command[1].strip()
+
+                    if command[0] in commands and database.find_name(user_username):
+                        print(f"{username} ENTERED: " + decrypted_data)
+
+                        commander_role = client_map[client_socket]["role"]
+                        commander_username = client_map[client_socket]["username"]
+
+                        if decrypted_data.startswith("/promote"):
+                            promote(
+                                commander_role,
+                                client_map,
+                                commander_username,
+                                user_username,
+                                database.update_user,
+                            )
+
+                        elif decrypted_data.startswith("/demote"):
+                            promote(
+                                commander_role,
+                                client_map,
+                                commander_username,
+                                user_username,
+                                database.update_user,
+                                promote=False,
+                            )
+                    else:
+                        print("Command not found or username not found")
+
+                elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED|")):
+                    if decrypted_data.startswith("USER_DISCONNECTED|"):
+                        user_disconnected_count += 1
+                        if user_disconnected_count >= 2:
+                            share_messages(
+                                decrypted_data,
+                                client_socket,
+                                client_map,
+                            )
+
+                            send_message_to_client(
+                                "SOCKET_CLOSING|",
+                                "USER_DISCONNECTED| Tag has been used more than once, meaning the tag has changed\nClosing connection in...",
+                                client_socket,
+                                encryption,
+                            )
+                            print(
+                                f"{client_socket} tried to change tag which led to close it's connection\nUsername {username}"
+                            )
+                            time.sleep(1)
+                            client_socket.close()
+                            client_map.pop(client_socket)
+                            return
+
+                    if decrypted_data.startswith("USER_JOINED|"):
+                        user_joined_count += 1
+                        if user_joined_count >= 2:
+                            share_messages(
+                                decrypted_data,
+                                client_socket,
+                                client_map,
+                            )
+
+                            send_message_to_client(
+                                "SOCKET_CLOSING|",
+                                "USER_JOINED| Tag has been used more than once, meaning the tag has changed\nClosing connection in...",
+                                client_socket,
+                                encryption,
+                            )
+                            print(
+                                f"{client_socket} tried to change tag which led to close it's connection\nUsername {username}"
+                            )
+                            time.sleep(1)
+                            client_socket.close()
+                            client_map.pop(client_socket)
+                            return
+
                     share_messages(
                         decrypted_data,
                         client_socket,

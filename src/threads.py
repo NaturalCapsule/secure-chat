@@ -17,23 +17,43 @@ password_hasher = PasswordHasher()
 
 def server_console(client_map, update_user):
     while True:
-        server_console_input = input("Server Console: ").strip()
+        server_console_input = input("Server Console: ")
 
-        if server_console_input.startswith("/promote"):
-            command = server_console_input.split(" ")
-            username = command[1].strip()
-            promote("server", client_map, "server", username, update_user, True)
+        if server_console_input.strip():
+            command = server_console_input.split(" ", 1)
+            username = None
+            if command[0] != "/users":
+                try:
+                    username = command[1].strip()
+                except IndexError:
+                    print("Provide a name next to the command\n'/command user'")
 
-        elif server_console_input.startswith("/users"):
-            for client in client_map:
-                print("-" * 10)
-                print(client_map[client]["username"])
-                print(client_map[client]["role"])
+            if server_console_input.startswith("/promote"):
+                promote("server", client_map, "server", username, update_user, True)
 
-        elif server_console_input.startswith("/demote"):
-            command = server_console_input.split(" ")
-            username = command[1].strip()
-            promote("server", client_map, "server", username, update_user, True, False)
+            elif server_console_input.startswith("/users"):
+                for client in client_map:
+                    print("-" * len(client_map[client]["username"]))
+                    print(client_map[client]["username"])
+                    print(client_map[client]["role"])
+
+            elif server_console_input.startswith("/demote"):
+                promote("server", client_map, "server", username, update_user, False)
+
+            elif server_console_input.startswith("/kick"):
+                for client, values in client_map.items():
+                    if username == values["username"]:
+                        encryption = client_map[client]["encryption"]
+                        kick_user(
+                            "server",
+                            username,
+                            client_map,
+                            share_messages,
+                            encryption,
+                        )
+                        break
+                else:
+                    print("No username found online.")
 
 
 def recv_exact(sock, size):
@@ -156,7 +176,10 @@ def share_messages(message, sender, client_map, sending_to_all=False):
             message_length = len(encrypted_message)
             header = message_length.to_bytes(4, byteorder="big")
 
-            client.sendall(header + encrypted_message)
+            try:
+                client.sendall(header + encrypted_message)
+            except OSError:
+                continue
 
     except BrokenPipeError:
         pass
@@ -375,8 +398,17 @@ def handle_client(
                                 database.update_user,
                                 promote=False,
                             )
+
+                        elif decrypted_data.startswith("/kick"):
+                            kick_user(
+                                commander_role,
+                                user_username,
+                                client_map,
+                                share_messages,
+                                encryption,
+                            )
                     else:
-                        print("Command not found or username not found")
+                        print("Command or username not found")
 
                 elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED|")):
                     if decrypted_data.startswith("USER_DISCONNECTED|"):
@@ -435,7 +467,10 @@ def handle_client(
                     messages.append(decrypted_data)
 
             client_list.remove(client_socket)
-            client_map.pop(client_socket)
+            try:
+                client_map.pop(client_socket)
+            except KeyError:
+                pass
             message_flag = "USERS_CONNECTED|"
 
             userss = ""

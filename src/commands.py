@@ -1,3 +1,6 @@
+import time
+from shutdown import shutdown_socket
+
 roles = {"user": 0, "staff": 1, "admin": 2, "server": 3}
 
 
@@ -8,14 +11,31 @@ def compare_roles(commander_role: str, user_role: str):
         return False
 
 
-# def kick_user(client_socket, )
-
-
 def get_user_role(username, client_map):
     for client, values in client_map.items():
         if username == values["username"]:
             return client_map[client]["role"]
     return False
+
+
+def get_user_client(username, client_map):
+    for client, values in client_map.items():
+        if username == values["username"]:
+            return client
+    return False
+
+
+def kick_user(commander_role, username, client_map, share_message, encryption):
+    user_role = get_user_role(username, client_map)
+    user_client = get_user_client(username, client_map)
+
+    if user_role and compare_roles(commander_role, user_role) and user_client:
+        shutdown_socket(user_client, encryption, "SOCKET_CLOSING|You have been kicked.")
+        print("EXECUTED")
+
+        share_message(
+            f"SOCKET_CLOSING|{username} has been kicked", user_client, client_map
+        )
 
 
 def promote(
@@ -24,7 +44,6 @@ def promote(
     commander_username,
     user_username,
     update_database,
-    is_server=False,
     promote=True,
 ):
     user_role = get_user_role(user_username, client_map)
@@ -43,6 +62,8 @@ def promote(
                 return
 
             changed_role_name = list_roles[user_role_index + 1][0]
+            # changed_role_index = list_roles[user_role_index + 1][1]
+
         else:
             msg = "Demoted"
             if user_role_index == 0:
@@ -52,8 +73,6 @@ def promote(
 
         message = f"{msg} {user_username} to {changed_role_name} with the help of {commander_username}"
 
-        # upgraded_role_index = list_roles[user_role_index + 1][1]
-
         for client, values in client_map.items():
             if user_username == values["username"]:
                 client_map[client]["role"] = changed_role_name
@@ -62,5 +81,5 @@ def promote(
                 break
     else:
         print(
-            f"An error occured\nEither no user role found or comparing roles failed\nAction done by {commander_username}"
+            f"An error occured.\nEither no user role found or comparing roles failed\nAction done by {commander_username}"
         )

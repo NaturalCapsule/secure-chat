@@ -83,7 +83,7 @@ while True:
         shutdown_socket(
             server,
             encryption,
-            "CHAT|Server has disconnected.\nDisconnecting all users in",
+            "SOCKET_CLOSING|Server has disconnected.\nDisconnecting all users in",
             client_list,
         )
         sys.exit()

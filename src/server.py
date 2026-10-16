@@ -84,6 +84,6 @@ while True:
             server,
             encryption,
             "SOCKET_CLOSING|Server has disconnected.\nDisconnecting all users in",
-            client_list,
+            client_map,
         )
         sys.exit()

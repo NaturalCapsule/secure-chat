@@ -23,7 +23,6 @@ def key_bindings_(
                 shutdown_socket(client_socket, encryption, quit_message)
 
             elif input_buffer.text == "/list_users":
-                # show_userconnected(None)
                 show_users[0] = True
                 input_buffer.reset()
                 event.app.invalidate()

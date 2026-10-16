@@ -30,8 +30,13 @@ def kick_user(commander_role, username, client_map, share_message, encryption):
     user_client = get_user_client(username, client_map)
 
     if user_role and compare_roles(commander_role, user_role) and user_client:
-        shutdown_socket(user_client, encryption, "SOCKET_CLOSING|You have been kicked.")
-        print("EXECUTED")
+        shutdown_socket(
+            user_client,
+            encryption,
+            "SOCKET_CLOSING|You have been kicked.",
+            client_map,
+            username,
+        )
 
         share_message(
             f"SOCKET_CLOSING|{username} has been kicked", user_client, client_map

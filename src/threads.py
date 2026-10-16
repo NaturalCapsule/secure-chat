@@ -22,7 +22,7 @@ def server_console(client_map, update_user):
         if server_console_input.strip():
             command = server_console_input.split(" ", 1)
             username = None
-            if command[0] != "/users":
+            if command[0].strip() != "/users":
                 try:
                     username = command[1].strip()
                 except IndexError:
@@ -33,8 +33,9 @@ def server_console(client_map, update_user):
 
             elif server_console_input.startswith("/users"):
                 for client in client_map:
-                    print("-" * len(client_map[client]["username"]))
-                    print(client_map[client]["username"])
+                    user = client_map[client]["username"]
+                    print("-" * len(user))
+                    print(user)
                     print(client_map[client]["role"])
 
             elif server_console_input.startswith("/demote"):
@@ -69,8 +70,8 @@ def recv_exact(sock, size):
 
         return data
 
-    except OSError:
-        pass
+    except OSError as e:
+        print(e.errno, e)
 
 
 def UpTime(up_time_, client_list, client_map):
@@ -104,7 +105,8 @@ def get_messages(client_socket, encryption, app):
                 time.sleep(1)
 
             app.exit()
-            break
+            # break
+            return
 
         message_length = int.from_bytes(header, byteorder="big")
 
@@ -117,7 +119,7 @@ def get_messages(client_socket, encryption, app):
                 time.sleep(1)
 
             app.exit()
-            break
+            return
 
         data_decrypted = encryption.decrypt(data)
         if data_decrypted.startswith("USER_COUNT|"):
@@ -281,7 +283,7 @@ def handle_client(
                     encryption,
                 )
                 print(
-                    f"{client_socket} tried to join with an invalid tag\nClosed it's connection"
+                    f"{username} tried to join with an invalid tag\nClosed it's connection"
                 )
                 time.sleep(1)
                 client_socket.close()
@@ -296,7 +298,7 @@ def handle_client(
                         encryption,
                     )
                     print(
-                        f"{client_socket} tried to login with a username that is already online in this session.\nUsername '{username}'"
+                        f"{username} tried to login with a username that is already online in this session.\nUsername '{username}'"
                     )
                     time.sleep(1)
                     client_socket.close()
@@ -317,7 +319,7 @@ def handle_client(
 
             userss = ""
             for user in client_map.values():
-                userss += f"● {user['username']},"
+                userss += f"● {user['username']} ({user['role']}),"
 
             userss = message_flag + userss
 
@@ -414,68 +416,71 @@ def handle_client(
                     if decrypted_data.startswith("USER_DISCONNECTED|"):
                         user_disconnected_count += 1
                         if user_disconnected_count >= 2:
+                            decrypted_data = f"SOCKET_CLOSING|{username} tired to change message tag which led to close it's connectin."
+                            share_messages(
+                                decrypted_data,
+                                client_socket,
+                                client_map,
+                            )
+                            shutdown_socket(
+                                client_socket,
+                                encryption,
+                                decrypted_data,
+                                client_map,
+                                username,
+                            )
+                            print(
+                                f"{username} tried to change tag which led to close it's connection\n"
+                            )
+                            break
+
+                        else:
                             share_messages(
                                 decrypted_data,
                                 client_socket,
                                 client_map,
                             )
 
-                            send_message_to_client(
-                                "SOCKET_CLOSING|",
-                                "USER_DISCONNECTED| Tag has been used more than once, meaning the tag has changed\nClosing connection in...",
-                                client_socket,
-                                encryption,
-                            )
-                            print(
-                                f"{client_socket} tried to change tag which led to close it's connection\nUsername {username}"
-                            )
-                            time.sleep(1)
-                            client_socket.close()
-                            client_map.pop(client_socket)
-                            return
+                            print(decrypted_data)
+                            messages.append(decrypted_data)
 
                     if decrypted_data.startswith("USER_JOINED|"):
                         user_joined_count += 1
                         if user_joined_count >= 2:
+                            decrypted_data = f"SOCKET_CLOSING|{username} tired to change message tag which led to close it's connection."
+                            share_messages(
+                                decrypted_data,
+                                client_socket,
+                                client_map,
+                            )
+                            shutdown_socket(
+                                client_socket,
+                                encryption,
+                                decrypted_data,
+                                client_map,
+                                username,
+                            )
+                            print(
+                                f"{username} tried to change tag which led to close it's connection\n"
+                            )
+                            break
+                        else:
                             share_messages(
                                 decrypted_data,
                                 client_socket,
                                 client_map,
                             )
 
-                            send_message_to_client(
-                                "SOCKET_CLOSING|",
-                                "USER_JOINED| Tag has been used more than once, meaning the tag has changed\nClosing connection in...",
-                                client_socket,
-                                encryption,
-                            )
-                            print(
-                                f"{client_socket} tried to change tag which led to close it's connection\nUsername {username}"
-                            )
-                            time.sleep(1)
-                            client_socket.close()
-                            client_map.pop(client_socket)
-                            return
-
-                    share_messages(
-                        decrypted_data,
-                        client_socket,
-                        client_map,
-                    )
-
-                    print(decrypted_data)
-                    messages.append(decrypted_data)
+                            print(decrypted_data)
+                            messages.append(decrypted_data)
 
             client_list.remove(client_socket)
-            try:
-                client_map.pop(client_socket)
-            except KeyError:
-                pass
+            client_map.pop(client_socket)
             message_flag = "USERS_CONNECTED|"
 
             userss = ""
             for user in client_map.values():
-                userss += f"● {user['username']},"
+                userss += f"● {user['username']} ({user['role']}),"
 
             userss = message_flag + userss
             share_messages(

@@ -1,4 +1,5 @@
 import sqlite3
+import sys
 import platform
 import os
 
@@ -46,7 +47,15 @@ class DataBase:
             print("Failed to delete data from SQLite table:", error)
 
     def database_file(self, file: str):
-        folder_path = f"/home/{os.getlogin()}/.config/secure_chat/"
+        if platform.system() in ("Linux", "Darwin"):
+            folder_path = f"/home/{os.getlogin()}/.config/secure_chat/"
+        elif platform.system() == "Windows":
+            folder_path = f"C:\\Users\\{os.getlogin()}\\AppData\\Local"
+
+        else:
+            print("Unsupported OS detected\nExiting.")
+            sys.exit()
+            return
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
         abs_path = os.path.join(folder_path + file)

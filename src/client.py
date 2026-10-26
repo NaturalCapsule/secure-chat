@@ -68,6 +68,7 @@ header = message_length.to_bytes(4, byteorder="big")
 client_socket.sendall(header + encrypted_join_message)
 
 
+# Fix this.
 quit_message = f"USER_DISCONNECTED|{username} has Disconnected from the server"
 
 joined_message = f"USER_JOINED|{username} has joined the convo"

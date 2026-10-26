@@ -1,5 +1,6 @@
 import socket
 import threading
+import time
 
 from encryption import *
 from threads import *
@@ -24,15 +25,16 @@ messages = []
 database = DataBase("database.pb")
 
 client_map = {}
+users_muted = {}
 
 up_time_ = []
-uptime_thread = threading.Thread(
-    target=UpTime, args=(up_time_, client_list, client_map)
-)
+uptime_thread = threading.Thread(target=UpTime, args=(up_time_, client_map))
 uptime_thread.start()
 
 server_console_thread = threading.Thread(
-    target=server_console, daemon=False, args=(client_map, database.update_user)
+    target=server_console,
+    daemon=False,
+    args=(client_map, database.update_user, users_muted),
 ).start()
 
 
@@ -72,6 +74,7 @@ while True:
                 client_map,
                 up_time_,
                 database,
+                users_muted,
             ),
             daemon=True,
         )

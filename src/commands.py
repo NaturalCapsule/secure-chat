@@ -1,4 +1,3 @@
-import time
 from shutdown import shutdown_socket
 
 roles = {"user": 0, "staff": 1, "admin": 2, "server": 3}
@@ -41,6 +40,76 @@ def kick_user(commander_role, username, client_map, share_message, encryption):
         share_message(
             f"SOCKET_CLOSING|{username} has been kicked", user_client, client_map
         )
+
+
+def check_passed_time(username, client_map, current_time, backup):
+    user_client = get_user_client(username, client_map)
+
+    if client_map[user_client]["muted_until"] < current_time:
+        client_map[user_client]["muted_until"] = False
+        return True
+    else:
+        return False
+
+
+def mute(
+    commander_role,
+    client_map,
+    commander_username,
+    user_username,
+    duration,
+    current_time,
+    share_messages,
+    backup,
+):
+    muted_time = current_time + duration
+
+    user_client = get_user_client(user_username, client_map)
+    user_role = get_user_role(user_username, client_map)
+
+    if user_role and compare_roles(commander_role, user_role):
+        if user_client:
+            client_map[user_client]["muted_until"] = muted_time
+            backup[user_username] = muted_time
+            share_messages(
+                f"USER_MUTED|{user_username} has been muted by {commander_username} for {duration} seconds.",
+                None,
+                client_map,
+                True,
+            )
+        else:
+            print("Error. could'nt find user client")
+
+    else:
+        print("Error. user role not found or comparing roles failed.")
+
+
+def unmute(
+    commander_role,
+    client_map,
+    commander_username,
+    user_username,
+    current_time,
+    share_messages,
+    backup,
+):
+    user_role = get_user_role(user_username, client_map)
+
+    if user_role and compare_roles(commander_role, user_role):
+        user_client = get_user_client(user_username, client_map)
+        if user_client:
+            client_map[user_client]["muted_until"] = False
+            backup[user_username] = False
+            share_messages(
+                f"USER_MUTED|{user_username} has been unmuted by {commander_username}.",
+                None,
+                client_map,
+                True,
+            )
+        else:
+            print("Error. could'nt find users client")
+    else:
+        print("Error. user role not found or comparing roles failed.")
 
 
 def promote(

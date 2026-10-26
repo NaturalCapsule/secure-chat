@@ -9,18 +9,20 @@ messages = []
 count_users = []
 server_uptime = []
 users_connected = []
+current_timemonotinoc = None
 
-commands = ("/kick", "/mute", "/promote", "/demote")
+
+commands = ("/kick", "/mute", "/promote", "/demote", "/unmute")
 
 password_hasher = PasswordHasher()
 
 
-def server_console(client_map, update_user):
+def server_console(client_map, update_user, backup):
     while True:
         server_console_input = input("Server Console: ")
 
         if server_console_input.strip():
-            command = server_console_input.split(" ", 1)
+            command = server_console_input.split(" ")
             username = None
             if command[0].strip() != "/users":
                 try:
@@ -56,6 +58,34 @@ def server_console(client_map, update_user):
                 else:
                     print("No username found online.")
 
+            elif server_console_input.startswith("/mute"):
+                try:
+                    duration = int(command[2].strip())
+                    print("USERNAME: ", username)
+                    mute(
+                        "server",
+                        client_map,
+                        "server",
+                        username,
+                        duration,
+                        current_timemonotinoc,
+                        share_messages,
+                        backup,
+                    )
+                except IndexError:
+                    print("Make sure there is a duration (e.g. '/mute user 60')")
+
+            elif server_console_input.startswith("/unmute"):
+                unmute(
+                    "server",
+                    client_map,
+                    "server",
+                    username,
+                    current_timemonotinoc,
+                    share_messages,
+                    backup,
+                )
+
 
 def recv_exact(sock, size):
     data = b""
@@ -74,10 +104,13 @@ def recv_exact(sock, size):
         print(e.errno, e)
 
 
-def UpTime(up_time_, client_list, client_map):
+def UpTime(up_time_, client_map):
+    global current_timemonotinoc
     start = time.perf_counter()
 
     while True:
+        current_time = time.monotonic()
+
         elapsed = time.perf_counter() - start
 
         hours = int(elapsed // 3600)
@@ -88,8 +121,9 @@ def UpTime(up_time_, client_list, client_map):
 
         up_time_.append(up_time)
 
-        if client_list and client_map:
+        if client_map:
             share_messages(up_time, "server socket", client_map, True)
+            current_timemonotinoc = current_time
 
         time.sleep(1)
 
@@ -125,6 +159,10 @@ def get_messages(client_socket, encryption, app):
         if data_decrypted.startswith("USER_COUNT|"):
             count_users.append(data_decrypted[11:])
 
+        elif data_decrypted.startswith("USER_MUTED|"):
+            data_decrypted = data_decrypted[len("USER_MUTED|") :]
+            messages.append(data_decrypted)
+
         elif data_decrypted.startswith("CHAT|"):
             data_decrypted = data_decrypted[5:]
             timestamp_string, message = data_decrypted.split("]", 1)
@@ -153,6 +191,9 @@ def get_messages(client_socket, encryption, app):
             data_decrypted = data_decrypted[16:]
             users_connected.append(data_decrypted.split(","))
 
+        # elif data_decrypted.startswith("TIMEMONOTONIC|"):
+        #     print("TRUEEE")
+
         app.invalidate()
 
 
@@ -178,15 +219,17 @@ def share_messages(message, sender, client_map, sending_to_all=False):
             message_length = len(encrypted_message)
             header = message_length.to_bytes(4, byteorder="big")
 
-            try:
-                client.sendall(header + encrypted_message)
-            except OSError:
-                continue
+            # try:
+            client.sendall(header + encrypted_message)
+            # except OSError as e:
+            #     print(e.errno, e)
+            # continue
 
     except BrokenPipeError:
         pass
 
 
+# make a backup client_map for users who are muted
 def handle_client(
     client_socket,
     client_list,
@@ -196,6 +239,7 @@ def handle_client(
     client_map,
     up_time,
     database,
+    backup,
 ):
     username = ""
 
@@ -256,6 +300,16 @@ def handle_client(
                     return
 
             elif decrypted_data.startswith("REGISTER|"):
+                if len(username) > 14:
+                    send_message_to_client(
+                        "SOCKET_CLOSING|",
+                        "Username should not be more than 14 character.\nClosing connection",
+                        client_socket,
+                        encryption,
+                    )
+                    client_socket.close()
+                    return
+
                 password_hash = password_hasher.hash(password)
 
                 if database.find_name(username) is False:
@@ -304,12 +358,23 @@ def handle_client(
                     client_socket.close()
                     return
 
-            client_map[client_socket] = {
-                "userID": userid,
-                "username": username,
-                "encryption": encryption,
-                "role": role,
-            }
+            if username in backup:
+                client_map[client_socket] = {
+                    "userID": userid,
+                    "username": username,
+                    "encryption": encryption,
+                    "role": role,
+                    "muted_until": backup[username],
+                }
+            else:
+                backup[username] = False
+                client_map[client_socket] = {
+                    "userID": userid,
+                    "username": username,
+                    "encryption": encryption,
+                    "role": role,
+                    "muted_until": False,
+                }
 
             client_list.append(client_socket)
             clients_connected = "USER_COUNT|" + str(len(client_list))
@@ -352,6 +417,8 @@ def handle_client(
                 decrypted_data = encryption.decrypt(data)
 
                 if decrypted_data.startswith("CHAT|"):
+                    # if client_map[client_socket]["muted_until"] != False:
+                    # else:
                     decrypted_data = decrypted_data[5:]
                     username = client_map[client_socket]["username"]
                     message_flag = "CHAT|"
@@ -362,14 +429,32 @@ def handle_client(
                         f"{message_flag}[{message_time}] {username} > {decrypted_data}"
                     )
 
-                    print(message)
+                    if client_map[client_socket]["muted_until"] != False:
+                        has_passed = check_passed_time(
+                            client_map[client_socket]["username"],
+                            client_map,
+                            current_timemonotinoc,
+                            backup,
+                        )
 
-                    messages.append(message)
-                    share_messages(
-                        message,
-                        client_socket,
-                        client_map,
-                    )
+                        if has_passed:
+                            print(message)
+
+                            messages.append(message)
+                            share_messages(
+                                message,
+                                client_socket,
+                                client_map,
+                            )
+                    else:
+                        print(message)
+
+                        messages.append(message)
+                        share_messages(
+                            message,
+                            client_socket,
+                            client_map,
+                        )
 
                 elif decrypted_data.startswith("COMMAND|"):
                     decrypted_data = decrypted_data[len("COMMAND|") :]
@@ -408,6 +493,33 @@ def handle_client(
                                 client_map,
                                 share_messages,
                                 encryption,
+                            )
+
+                        elif decrypted_data.startswith("/mute"):
+                            try:
+                                duration = int(command[2].strip())
+                                mute(
+                                    commander_role,
+                                    client_map,
+                                    commander_username,
+                                    user_username,
+                                    duration,
+                                    current_timemonotinoc,
+                                    share_messages,
+                                    backup,
+                                )
+                            except IndexError:
+                                pass
+
+                        elif decrypted_data.startswith("/unmute"):
+                            unmute(
+                                commander_role,
+                                client_map,
+                                commander_username,
+                                user_username,
+                                current_timemonotinoc,
+                                share_messages,
+                                backup,
                             )
                     else:
                         print("Command or username not found")

@@ -358,6 +358,12 @@ def handle_client(
                     client_socket.close()
                     return
 
+            quit_message = (
+                f"USER_DISCONNECTED|{username} has Disconnected from the server"
+            )
+
+            joined_message = f"{username} has joined the convo"
+
             if username in backup:
                 client_map[client_socket] = {
                     "userID": userid,
@@ -525,37 +531,6 @@ def handle_client(
                         print("Command or username not found")
 
                 elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED|")):
-                    if decrypted_data.startswith("USER_DISCONNECTED|"):
-                        user_disconnected_count += 1
-                        if user_disconnected_count >= 2:
-                            decrypted_data = f"SOCKET_CLOSING|{username} tired to change message tag which led to close it's connectin."
-                            share_messages(
-                                decrypted_data,
-                                client_socket,
-                                client_map,
-                            )
-                            shutdown_socket(
-                                client_socket,
-                                encryption,
-                                decrypted_data,
-                                client_map,
-                                username,
-                            )
-                            print(
-                                f"{username} tried to change tag which led to close it's connection\n"
-                            )
-                            break
-
-                        else:
-                            share_messages(
-                                decrypted_data,
-                                client_socket,
-                                client_map,
-                            )
-
-                            print(decrypted_data)
-                            messages.append(decrypted_data)
-
                     if decrypted_data.startswith("USER_JOINED|"):
                         user_joined_count += 1
                         if user_joined_count >= 2:
@@ -578,13 +553,69 @@ def handle_client(
                             break
                         else:
                             share_messages(
-                                decrypted_data,
+                                decrypted_data + joined_message,
                                 client_socket,
                                 client_map,
                             )
 
                             print(decrypted_data)
                             messages.append(decrypted_data)
+
+                    if (
+                        decrypted_data.startswith("USER_DISCONNECTED|")
+                        and user_joined_count >= 1
+                    ):
+                        user_disconnected_count += 1
+                        if user_disconnected_count >= 2:
+                            decrypted_data = f"SOCKET_CLOSING|{username} tired to change message tag which led to close it's connection."
+                            share_messages(
+                                decrypted_data,
+                                client_socket,
+                                client_map,
+                            )
+
+                            shutdown_socket(
+                                client_socket,
+                                encryption,
+                                quit_message,
+                                client_map,
+                                username,
+                            )
+                            print(
+                                f"{username} tried to change tag which led to close it's connection\n"
+                            )
+                            break
+
+                        else:
+                            share_messages(
+                                quit_message,
+                                client_socket,
+                                client_map,
+                            )
+
+                            print(quit_message)
+                            messages.append(decrypted_data)
+                            client_socket.close()
+                            break
+
+                    elif user_joined_count < 1:
+                        decrypted_data = f"SOCKET_CLOSING|{username} tired to change message tag which led to close it's connection."
+                        share_messages(
+                            decrypted_data,
+                            client_socket,
+                            client_map,
+                        )
+                        shutdown_socket(
+                            client_socket,
+                            encryption,
+                            quit_message,
+                            client_map,
+                            username,
+                        )
+                        print(
+                            f"{username} tried to change tag which led to close it's connection\n"
+                        )
+                        break
 
             client_list.remove(client_socket)
             client_map.pop(client_socket)

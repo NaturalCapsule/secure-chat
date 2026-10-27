@@ -10,9 +10,9 @@ def key_bindings_(
     messages,
     encryption,
     client_socket,
-    shutdown_socket,
+    # shutdown_socket,
     username,
-    quit_message,
+    # quit_message,
     message_scroll,
     show_users,
 ):
@@ -20,7 +20,13 @@ def key_bindings_(
     def send(event):
         if input_buffer.text != "" and input_buffer.text.strip():
             if input_buffer.text.strip() == "/quit":
-                shutdown_socket(client_socket, encryption, quit_message)
+                # shutdown_socket(client_socket, encryption, quit_message)
+                encrypted_data = encryption.encrypt("USER_DISCONNECTED|")
+
+                message_length = len(encrypted_data)
+                header = message_length.to_bytes(4, byteorder="big")
+                client_socket.sendall(header + encrypted_data)
+                return
 
             elif input_buffer.text == "/list_users":
                 show_users[0] = True
@@ -66,8 +72,17 @@ def key_bindings_(
 
     @kb.add("c-q")
     def _(event):
-        event.app.exit()
-        shutdown_socket(client_socket, encryption, quit_message)
+        try:
+            encrypted_data = encryption.encrypt("USER_DISCONNECTED|")
+
+            message_length = len(encrypted_data)
+            header = message_length.to_bytes(4, byteorder="big")
+            client_socket.sendall(header + encrypted_data)
+        except BrokenPipeError as e:
+            print("Error: ", e)
+            print(
+                "This might have happend because you exited before the app finished to close correctly."
+            )
 
     @kb.add("up")
     def scroll_up(event):

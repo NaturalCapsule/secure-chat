@@ -69,14 +69,15 @@ client_socket.sendall(header + encrypted_join_message)
 
 
 # Fix this.
-quit_message = f"USER_DISCONNECTED|{username} has Disconnected from the server"
+# quit_message = f"USER_DISCONNECTED|{username} has Disconnected from the server"
 
-joined_message = f"USER_JOINED|{username} has joined the convo"
-encrypted_join_message = encryption.encrypt(joined_message)
+joined_tag = "USER_JOINED|"
+encrypted_join_message = encryption.encrypt(joined_tag)
 
 message_length = len(encrypted_join_message)
 header = message_length.to_bytes(4, byteorder="big")
 client_socket.sendall(header + encrypted_join_message)
 
 
-run_app(client_socket, encryption, username, shutdown_socket, quit_message)
+run_app(client_socket, encryption, username)
+# run_app(client_socket, encryption, username, shutdown_socket, quit_message)

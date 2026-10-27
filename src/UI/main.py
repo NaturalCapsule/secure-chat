@@ -11,7 +11,8 @@ from threads import get_messages, messages, count_users, server_uptime, users_co
 show_users = [False]
 
 
-def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
+# def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
+def run_app(client_socket, encryption, username):
 
     ui = ui_layout(messages, count_users, server_uptime, show_users, users_connected)
     layout = Layout(ui)
@@ -31,9 +32,9 @@ def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
         messages,
         encryption,
         client_socket,
-        shutdown_socket,
+        # shutdown_socket,
         username,
-        quit_message,
+        # quit_message,
         message_scroll,
         show_users,
     )

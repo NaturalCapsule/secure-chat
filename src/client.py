@@ -4,7 +4,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from encryption import Encryption, serialize_public_key, serialization
-from shutdown import shutdown_socket
 from threads import recv_exact
 
 
@@ -68,9 +67,6 @@ header = message_length.to_bytes(4, byteorder="big")
 client_socket.sendall(header + encrypted_join_message)
 
 
-# Fix this.
-# quit_message = f"USER_DISCONNECTED|{username} has Disconnected from the server"
-
 joined_tag = "USER_JOINED|"
 encrypted_join_message = encryption.encrypt(joined_tag)
 
@@ -80,4 +76,3 @@ client_socket.sendall(header + encrypted_join_message)
 
 
 run_app(client_socket, encryption, username)
-# run_app(client_socket, encryption, username, shutdown_socket, quit_message)

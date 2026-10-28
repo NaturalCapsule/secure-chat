@@ -139,7 +139,6 @@ def get_messages(client_socket, encryption, app):
                 time.sleep(1)
 
             app.exit()
-            # break
             return
 
         message_length = int.from_bytes(header, byteorder="big")
@@ -191,9 +190,6 @@ def get_messages(client_socket, encryption, app):
             data_decrypted = data_decrypted[16:]
             users_connected.append(data_decrypted.split(","))
 
-        # elif data_decrypted.startswith("TIMEMONOTONIC|"):
-        #     print("TRUEEE")
-
         app.invalidate()
 
 
@@ -219,17 +215,12 @@ def share_messages(message, sender, client_map, sending_to_all=False):
             message_length = len(encrypted_message)
             header = message_length.to_bytes(4, byteorder="big")
 
-            # try:
             client.sendall(header + encrypted_message)
-            # except OSError as e:
-            #     print(e.errno, e)
-            # continue
 
     except BrokenPipeError:
         pass
 
 
-# make a backup client_map for users who are muted
 def handle_client(
     client_socket,
     client_list,
@@ -423,8 +414,6 @@ def handle_client(
                 decrypted_data = encryption.decrypt(data)
 
                 if decrypted_data.startswith("CHAT|"):
-                    # if client_map[client_socket]["muted_until"] != False:
-                    # else:
                     decrypted_data = decrypted_data[5:]
                     username = client_map[client_socket]["username"]
                     message_flag = "CHAT|"

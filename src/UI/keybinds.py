@@ -10,9 +10,7 @@ def key_bindings_(
     messages,
     encryption,
     client_socket,
-    # shutdown_socket,
     username,
-    # quit_message,
     message_scroll,
     show_users,
 ):
@@ -20,7 +18,6 @@ def key_bindings_(
     def send(event):
         if input_buffer.text != "" and input_buffer.text.strip():
             if input_buffer.text.strip() == "/quit":
-                # shutdown_socket(client_socket, encryption, quit_message)
                 encrypted_data = encryption.encrypt("USER_DISCONNECTED|")
 
                 message_length = len(encrypted_data)

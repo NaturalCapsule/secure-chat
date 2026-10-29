@@ -7,7 +7,14 @@ from threads import *
 from shutdown import shutdown_socket
 from database import DataBase
 
-PORT = 6787
+try:
+    PORT = sys.argv[1].strip()
+    PORT = int(PORT)
+except (ValueError, IndexError):
+    PORT = 6767
+    print(
+        f"Make sure port number is integer data type for next time.\nUsing default port {PORT}"
+    )
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(("0.0.0.0", PORT))

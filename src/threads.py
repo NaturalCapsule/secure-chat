@@ -547,8 +547,8 @@ def handle_client(
                                 client_map,
                             )
 
-                            print(decrypted_data)
-                            messages.append(decrypted_data)
+                            print(decrypted_data + joined_message)
+                            messages.append(decrypted_data + joined_message)
 
                     if (
                         decrypted_data.startswith("USER_DISCONNECTED|")

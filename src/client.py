@@ -9,11 +9,30 @@ from threads import recv_exact
 
 from UI.main import *
 
-PORT = 6787
-IP = "192.168.1.100"
+IP = None
+try:
+    IP = sys.argv[1].strip()
+    print(IP)
+except IndexError:
+    print("Enter an IP address to connect to the server")
+    print("<client> <IP> <PORT>")
+    sys.exit(0)
+try:
+    PORT = sys.argv[2].strip()
+    PORT = int(PORT)
+except (ValueError, IndexError):
+    PORT = 6767
+    print(
+        f"Make sure port number is integer data type for next time.\nUsing default port {PORT}"
+    )
+
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client_socket.connect((IP, PORT))
+try:
+    client_socket.connect((IP, PORT))
+except ConnectionRefusedError:
+    print("Maybe the server is not online or you entered a wrong port?")
+    sys.exit()
 
 header = recv_exact(client_socket, 4)
 

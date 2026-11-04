@@ -32,13 +32,13 @@ def kick_user(commander_role, username, client_map, share_message, encryption):
         shutdown_socket(
             user_client,
             encryption,
-            "SOCKET_CLOSING|You have been kicked.",
+            "SOCKET_CLOSING|#ffffffYou have been kicked.",
             client_map,
             username,
         )
 
         share_message(
-            f"SOCKET_CLOSING|{username} has been kicked", user_client, client_map
+            f"SOCKET_CLOSING|#ffffff{username} has been kicked", user_client, client_map
         )
 
 
@@ -72,7 +72,7 @@ def mute(
             client_map[user_client]["muted_until"] = muted_time
             backup[user_username] = muted_time
             share_messages(
-                f"USER_MUTED|{user_username} has been muted by {commander_username} for {duration} seconds.",
+                f"USER_MUTED|#ffffff{user_username} has been muted by {commander_username} for {duration} seconds.",
                 None,
                 client_map,
                 True,
@@ -101,7 +101,7 @@ def unmute(
             client_map[user_client]["muted_until"] = False
             backup[user_username] = False
             share_messages(
-                f"USER_MUTED|{user_username} has been unmuted by {commander_username}.",
+                f"USER_MUTED|#ffffff{user_username} has been unmuted by {commander_username}.",
                 None,
                 client_map,
                 True,

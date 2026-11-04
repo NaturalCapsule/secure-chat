@@ -6,15 +6,21 @@ import time
 
 
 def ui_layout(messages, count_users, server_uptime, show_users, users_connected):
-    message_area.text = lambda: "\n".join(messages)
+
+    def get_formatted_message(messages_list):
+        formatted_message = []
+
+        for message in messages_list:
+            color = message[:7]
+            message = message[7:] + "\n"
+
+            formatted_message.append((color, message))
+
+        return FormattedText(formatted_message)
+
+    message_area.text = lambda: get_formatted_message(messages)
 
     time.sleep(0.3)
-    # try:
-    #     usercount_widget.text = lambda: "Users " + count_users[-1]
-    #     server_uptime_widget.text = lambda: "Server UpTime: " + str(server_uptime[-1])
-    #     user_list_widget.text = lambda: "\n".join(users_connected[-1])
-    # except IndexError:
-    #     pass
     usercount_widget.text = lambda: (
         "Users " + count_users[-1] if count_users else "Users 0"
     )
@@ -25,9 +31,11 @@ def ui_layout(messages, count_users, server_uptime, show_users, users_connected)
         else "Server UpTime: N/A"
     )
 
-    user_list_widget.text = lambda: (
-        "\n".join(users_connected[-1]) if users_connected else ""
-    )
+    # user_list_widget.text = lambda: (
+    #     "\n".join(users_connected[-1]) if users_connected else ""
+    # )
+    user_list_widget.text = lambda: get_formatted_message(users_connected[-1])
+
     floater_ui = HSplit([user_list])
 
     users_float = users_float_(show_users, floater_ui)

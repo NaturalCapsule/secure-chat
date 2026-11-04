@@ -1,10 +1,14 @@
-from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.layout.controls import (
+    BufferControl,
+    FormattedTextControl,
+)
 from prompt_toolkit.layout import ScrollablePane
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.layout import Float, ConditionalContainer
 from prompt_toolkit.layout.containers import Window
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.widgets import Frame
+from prompt_toolkit.formatted_text import FormattedText
 
 input_buffer = Buffer()
 

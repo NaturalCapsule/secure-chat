@@ -1,5 +1,6 @@
 import datetime
 from prompt_toolkit.key_binding import KeyBindings
+from threads import user_color
 
 
 kb = KeyBindings()
@@ -13,6 +14,7 @@ def key_bindings_(
     username,
     message_scroll,
     show_users,
+    user_color,
 ):
     @kb.add("enter")
     def send(event):
@@ -46,7 +48,7 @@ def key_bindings_(
             message_time = message_time.strftime("%I:%M %p")
 
             messages.append(
-                f"[{message_time}] {username} (You) > {input_buffer.text}\n"
+                f"{user_color[0]}[{message_time}] {username} (You) > {input_buffer.text}\n"
             )
 
             encrypted_data = encryption.encrypt(f"CHAT|{input_buffer.text}\n")

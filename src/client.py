@@ -12,7 +12,6 @@ from UI.main import *
 IP = None
 try:
     IP = sys.argv[1].strip()
-    print(IP)
 except IndexError:
     print("Enter an IP address to connect to the server")
     print("<client> <IP> <PORT>")

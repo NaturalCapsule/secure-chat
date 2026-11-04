@@ -5,13 +5,19 @@ from prompt_toolkit.layout.layout import Layout
 
 from UI.keybinds import kb, key_bindings_
 from UI.layout import *
-from threads import get_messages, messages, count_users, server_uptime, users_connected
+from threads import (
+    get_messages,
+    messages,
+    count_users,
+    server_uptime,
+    users_connected,
+    user_color,
+)
 
 
 show_users = [False]
 
 
-# def run_app(client_socket, encryption, username, shutdown_socket, quit_message):
 def run_app(client_socket, encryption, username):
 
     ui = ui_layout(messages, count_users, server_uptime, show_users, users_connected)
@@ -32,11 +38,10 @@ def run_app(client_socket, encryption, username):
         messages,
         encryption,
         client_socket,
-        # shutdown_socket,
         username,
-        # quit_message,
         message_scroll,
         show_users,
+        user_color,
     )
 
     app.run()

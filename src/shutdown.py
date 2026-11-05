@@ -2,12 +2,22 @@ import socket
 import sys
 
 
-def shutdown_socket(socket_, encryption, quit_message, client_map=None, username=None):
+def shutdown_socket(
+    socket_,
+    encryption,
+    message_tag,
+    message_color,
+    quit_message,
+    client_map=None,
+    username=None,
+):
     try:
         if client_map and not username:
             for client, values in client_map.items():
                 encryption_ = values["encryption"]
-                quit_encrypted = encryption_.encrypt(quit_message)
+                quit_encrypted = encryption_.encrypt(
+                    message_tag + message_color + quit_message
+                )
                 message_length = len(quit_encrypted)
                 header = message_length.to_bytes(4, byteorder="big")
                 client.sendall(header + quit_encrypted)
@@ -25,7 +35,9 @@ def shutdown_socket(socket_, encryption, quit_message, client_map=None, username
                         encryption = client_map[client]["encryption"]
                         break
 
-            quit_encrypted = encryption.encrypt(quit_message)
+            quit_encrypted = encryption.encrypt(
+                message_tag + message_color + quit_message
+            )
             message_length = len(quit_encrypted)
             header = message_length.to_bytes(4, byteorder="big")
 

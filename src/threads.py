@@ -118,12 +118,14 @@ def UpTime(up_time_, client_map):
         minutes = int((elapsed % 3600) // 60)
         seconds = int(elapsed % 60)
 
-        up_time = f"SERVERUPTIME|{hours:03}:{minutes:02}:{seconds:02}"
+        up_time = f"{hours:03}:{minutes:02}:{seconds:02}"
 
         up_time_.append(up_time)
 
         if client_map:
-            share_messages(up_time, "server socket", client_map, True, True)
+            share_messages(
+                "SERVERUPTIME|", "", up_time, "server socket", client_map, True, True
+            )
             current_timemonotinoc = current_time
 
         time.sleep(1)
@@ -207,8 +209,10 @@ def get_messages(client_socket, encryption, app):
         app.invalidate()
 
 
-def send_message_to_client(message_flag, message, client_socket, encryption):
-    encrypted_message = encryption.encrypt(message_flag + message)
+def send_message_to_client(
+    message_tag, message_color, message, client_socket, encryption
+):
+    encrypted_message = encryption.encrypt(message_tag + message_color + message)
 
     message_length = len(encrypted_message)
     header = message_length.to_bytes(4, byteorder="big")
@@ -217,7 +221,13 @@ def send_message_to_client(message_flag, message, client_socket, encryption):
 
 
 def share_messages(
-    message, sender, client_map, sending_to_all=False, is_sending_time=False
+    message_tag,
+    message_color,
+    message,
+    sender,
+    client_map,
+    sending_to_all=False,
+    is_sending_time=False,
 ):
     try:
         for client, user in client_map.items():
@@ -226,7 +236,9 @@ def share_messages(
 
             encryption = user["encryption"]
 
-            encrypted_message = encryption.encrypt(message)
+            encrypted_message = encryption.encrypt(
+                message_tag + message_color + message
+            )
 
             message_length = len(encrypted_message)
             header = message_length.to_bytes(4, byteorder="big")
@@ -282,7 +294,8 @@ def handle_client(
             if not username.strip() or not password.strip():
                 send_message_to_client(
                     "SOCKET_CLOSING|",
-                    "#ffffffDetected blank username or password\nClosing connection in...",
+                    "#ffffff",
+                    "Detected blank username or password\nClosing connection in...",
                     client_socket,
                     encryption,
                 )
@@ -304,7 +317,8 @@ def handle_client(
                     )
                     send_message_to_client(
                         "SOCKET_CLOSING|",
-                        f"#ffffffPassword and it's hash did not match for user '{username}'\nClosing connection in...",
+                        "#ffffff",
+                        f"Password and it's hash did not match for user '{username}'\nClosing connection in...",
                         client_socket,
                         encryption,
                     )
@@ -316,7 +330,8 @@ def handle_client(
                 if len(username) > 14:
                     send_message_to_client(
                         "SOCKET_CLOSING|",
-                        "#ffffffUsername should not be more than 14 character.\nClosing connection",
+                        "#ffffff",
+                        "Username should not be more than 14 character.\nClosing connection",
                         client_socket,
                         encryption,
                     )
@@ -332,7 +347,8 @@ def handle_client(
                 else:
                     send_message_to_client(
                         "SOCKET_CLOSING|",
-                        "#ffffffFound same username that is registered before\nMaybe you pressed the wrong option or entered wrong username??.\nClosing connection in...",
+                        "#ffffff",
+                        "Found same username that is registered before\nMaybe you pressed the wrong option or entered wrong username??.\nClosing connection in...",
                         client_socket,
                         encryption,
                     )
@@ -345,7 +361,8 @@ def handle_client(
             else:
                 send_message_to_client(
                     "SOCKET_CLOSING|",
-                    "#ffffffInvalid tag detected\nClosing connection in...",
+                    "#ffffff",
+                    "Invalid tag detected\nClosing connection in...",
                     client_socket,
                     encryption,
                 )
@@ -360,7 +377,8 @@ def handle_client(
                 if username == user["username"]:
                     send_message_to_client(
                         "SOCKET_CLOSING|",
-                        "#ffffffFound same username logged in. No duplicated username allowed\nClosing connection in...",
+                        "#ffffff",
+                        "Found same username logged in. No duplicated username allowed\nClosing connection in...",
                         client_socket,
                         encryption,
                     )
@@ -393,20 +411,23 @@ def handle_client(
 
             user_color_ = client_map[client_socket]["color"]
 
-            quit_message = f"USER_DISCONNECTED|{user_color_}{username} has Disconnected from the server\n"
-            joined_message = f"{user_color_}{username} has joined the convo\n"
+            quit_message = f"{username} has Disconnected from the server\n"
+            joined_message = f"{username} has joined the convo\n"
 
             client_list.append(client_socket)
-            clients_connected = "USER_COUNT|" + str(len(client_list))
+            clients_connected = str(len(client_list))
 
-            share_messages(clients_connected, client_socket, client_map, True)
+            share_messages(
+                "USER_COUNT|", "", clients_connected, client_socket, client_map, True
+            )
             send_message_to_client(
                 "USER_COLOR|",
+                "",
                 client_map[client_socket]["color"],
                 client_socket,
                 encryption,
             )
-            message_flag = "USERS_CONNECTED|"
+            message_tag = "USERS_CONNECTED|"
 
             userss = ""
             for user in client_map.values():
@@ -414,9 +435,9 @@ def handle_client(
                     f"{user['color']}● {user['username']} ({user['role']})|USERS_LIST"
                 )
 
-            userss = message_flag + userss
-
             share_messages(
+                message_tag,
+                "",
                 userss,
                 client_socket,
                 client_map,
@@ -446,11 +467,11 @@ def handle_client(
                 if decrypted_data.startswith("CHAT|"):
                     decrypted_data = decrypted_data[5:]
                     username = client_map[client_socket]["username"]
-                    message_flag = "CHAT|"
+                    message_tag = "CHAT|"
 
                     message_time = datetime.datetime.now(datetime.UTC).isoformat()
 
-                    message = f"{message_flag}{client_map[client_socket]['color']}[{message_time}] {username} > {decrypted_data}"
+                    message = f"[{message_time}] {username} > {decrypted_data}"
 
                     if client_map[client_socket]["muted_until"] != False:
                         has_passed = check_passed_time(
@@ -465,6 +486,8 @@ def handle_client(
 
                             messages.append(message)
                             share_messages(
+                                message_tag,
+                                client_map[client_socket]["color"],
                                 message,
                                 client_socket,
                                 client_map,
@@ -474,6 +497,8 @@ def handle_client(
 
                         messages.append(message)
                         share_messages(
+                            message_tag,
+                            client_map[client_socket]["color"],
                             message,
                             client_socket,
                             client_map,
@@ -551,8 +576,10 @@ def handle_client(
                     if decrypted_data.startswith("USER_JOINED|"):
                         user_joined_count += 1
                         if user_joined_count >= 2:
-                            decrypted_data = f"SOCKET_CLOSING|#ffffff{username} tired to change message tag which led to close it's connection."
+                            decrypted_data = f"{username} tired to change message tag which led to close it's connection."
                             share_messages(
+                                "SOCKET_CLOSING|",
+                                "#ffffff",
                                 decrypted_data,
                                 client_socket,
                                 client_map,
@@ -560,6 +587,8 @@ def handle_client(
                             shutdown_socket(
                                 client_socket,
                                 encryption,
+                                "SOCKET_CLOSING|",
+                                "#ffffff",
                                 decrypted_data,
                                 client_map,
                                 username,
@@ -570,7 +599,9 @@ def handle_client(
                             break
                         else:
                             share_messages(
-                                decrypted_data + joined_message,
+                                decrypted_data,
+                                user_color_,
+                                joined_message,
                                 client_socket,
                                 client_map,
                             )
@@ -584,8 +615,10 @@ def handle_client(
                     ):
                         user_disconnected_count += 1
                         if user_disconnected_count >= 2:
-                            decrypted_data = f"SOCKET_CLOSING|#ffffff{username} tired to change message tag which led to close it's connection."
+                            decrypted_data = f"{username} tired to change message tag which led to close it's connection."
                             share_messages(
+                                "SOCKET_CLOSING|",
+                                "#ffffff",
                                 decrypted_data,
                                 client_socket,
                                 client_map,
@@ -594,6 +627,8 @@ def handle_client(
                             shutdown_socket(
                                 client_socket,
                                 encryption,
+                                "USER_DISCONNECTED|",
+                                user_color_,
                                 quit_message,
                                 client_map,
                                 username,
@@ -605,6 +640,8 @@ def handle_client(
 
                         else:
                             share_messages(
+                                "USER_DISCONNECTED|",
+                                user_color_,
                                 quit_message,
                                 client_socket,
                                 client_map,
@@ -616,15 +653,19 @@ def handle_client(
                             break
 
                     elif user_joined_count < 1:
-                        decrypted_data = f"SOCKET_CLOSING|#ffffff{username} tired to change message tag which led to close it's connection."
+                        error_message = f"{username} tired to change message tag which led to close it's connection.\n"
                         share_messages(
-                            decrypted_data,
+                            "SOCKET_CLOSING|",
+                            "#ffffff",
+                            error_message,
                             client_socket,
                             client_map,
                         )
                         shutdown_socket(
                             client_socket,
                             encryption,
+                            "USER_DISCONNECTED|",
+                            user_color_,
                             quit_message,
                             client_map,
                             username,
@@ -636,7 +677,7 @@ def handle_client(
 
             client_list.remove(client_socket)
             client_map.pop(client_socket)
-            message_flag = "USERS_CONNECTED|"
+            message_tag = "USERS_CONNECTED|"
 
             userss = ""
             for user in client_map.values():
@@ -644,16 +685,19 @@ def handle_client(
                     f"{user['color']}● {user['username']} ({user['role']})|USERS_LIST"
                 )
 
-            userss = message_flag + userss
             share_messages(
+                message_tag,
+                "",
                 userss,
                 client_socket,
                 client_map,
                 True,
             )
 
-            clients_connected = "USER_COUNT|" + str(len(client_list))
+            clients_connected = str(len(client_list))
             share_messages(
+                "USER_COUNT|",
+                "",
                 clients_connected,
                 client_socket,
                 client_map,

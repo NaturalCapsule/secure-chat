@@ -93,7 +93,9 @@ while True:
         shutdown_socket(
             server,
             encryption,
-            "SOCKET_CLOSING|#ffffffServer has disconnected.\nDisconnecting all users in",
+            "SOCKET_CLOSING|",
+            "#ffffff",
+            "Server has disconnected.\nDisconnecting all users in",
             client_map,
         )
         sys.exit()

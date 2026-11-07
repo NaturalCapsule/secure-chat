@@ -6,6 +6,11 @@ from threads import user_color
 kb = KeyBindings()
 
 
+def scroll_down_instant(message_scroll, messages):
+    if message_scroll.vertical_scroll + 2 == (len(messages) * 2) - 16:
+        message_scroll.vertical_scroll += 2
+
+
 def key_bindings_(
     input_buffer,
     messages,

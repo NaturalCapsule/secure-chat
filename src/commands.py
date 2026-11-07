@@ -24,7 +24,7 @@ def get_user_client(username, client_map):
     return False
 
 
-def kick_user(commander_role, username, client_map, share_message, encryption):
+def kick_user(commander_role, username, client_map, share_message, encryption, logger):
     user_role = get_user_role(username, client_map)
     user_client = get_user_client(username, client_map)
 
@@ -47,6 +47,8 @@ def kick_user(commander_role, username, client_map, share_message, encryption):
             client_map,
         )
 
+        logger.info(f"{username} has been kicked.")
+
 
 def check_passed_time(username, client_map, current_time, backup):
     user_client = get_user_client(username, client_map)
@@ -67,6 +69,7 @@ def mute(
     current_time,
     share_messages,
     backup,
+    logger,
 ):
     muted_time = current_time + duration
 
@@ -85,6 +88,11 @@ def mute(
                 client_map,
                 True,
             )
+
+            logger.info(
+                f"{user_username} has been muted by {commander_username} for {duration} seconds."
+            )
+
         else:
             print("Error. could'nt find user client")
 
@@ -100,6 +108,7 @@ def unmute(
     current_time,
     share_messages,
     backup,
+    logger,
 ):
     user_role = get_user_role(user_username, client_map)
 
@@ -116,9 +125,18 @@ def unmute(
                 client_map,
                 True,
             )
+
+            logger.info(f"{user_username} has been unmuted by {commander_username}.")
+
         else:
             print("Error. could'nt find users client")
+            logger.error(
+                f"Error. could'nt find users client.\nAction was done by {commander_username}"
+            )
     else:
+        logger.error(
+            f"Error. user role not found or comparing roles failed.\nAction was done by {commander_username}"
+        )
         print("Error. user role not found or comparing roles failed.")
 
 
@@ -129,6 +147,7 @@ def promote(
     user_username,
     update_database,
     promote=True,
+    logger=None,
 ):
     user_role = get_user_role(user_username, client_map)
 
@@ -143,6 +162,11 @@ def promote(
                 print(
                     f"{user_username} is already an admin.\nIf you are trying to make it the 'server' you can't, since the server is the only one with the 'server' role.\nThis action was done by {commander_username}"
                 )
+                if logger:
+                    logger.warning(
+                        f"{user_username} is already an admin.\nThis action was done by {commander_username}"
+                    )
+
                 return
 
             changed_role_name = list_roles[user_role_index + 1][0]
@@ -152,10 +176,17 @@ def promote(
             msg = "Demoted"
             if user_role_index == 0:
                 print(f"{user_username} is already at user role level.")
+                if logger:
+                    logger.warning(
+                        f"{user_username} is already at user role level\nAction done by {commander_username}"
+                    )
                 return
             changed_role_name = list_roles[user_role_index - 1][0]
 
         message = f"{msg} {user_username} to {changed_role_name} with the help of {commander_username}"
+
+        if logger:
+            logger.info(message)
 
         for client, values in client_map.items():
             if user_username == values["username"]:
@@ -167,3 +198,8 @@ def promote(
         print(
             f"An error occured.\nEither no user role found or comparing roles failed\nAction done by {commander_username}"
         )
+
+        if logger:
+            logger.error(
+                f"An error occured.\nEither no user role found or comparing roles failed\nAction done by {commander_username}\nUsername {user_username}"
+            )

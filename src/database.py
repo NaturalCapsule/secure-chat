@@ -50,7 +50,7 @@ class DataBase:
         if platform.system() in ("Linux", "Darwin"):
             folder_path = f"/home/{os.getlogin()}/.config/secure_chat/"
         elif platform.system() == "Windows":
-            folder_path = f"C:\\Users\\{os.getlogin()}\\AppData\\Local"
+            folder_path = f"C:\\Users\\{os.getlogin()}\\AppData\\Local\\Secure_Chat"
 
         else:
             print("Unsupported OS detected\nExiting.")

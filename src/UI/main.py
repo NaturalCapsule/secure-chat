@@ -3,7 +3,7 @@ import threading
 from prompt_toolkit.application import Application
 from prompt_toolkit.layout.layout import Layout
 
-from UI.keybinds import kb, key_bindings_
+from UI.keybinds import kb, key_bindings_, scroll_down_instant
 from UI.layout import *
 from threads import (
     get_messages,
@@ -29,7 +29,7 @@ def run_app(client_socket, encryption, username):
 
     threading.Thread(
         target=get_messages,
-        args=(client_socket, encryption, app),
+        args=(client_socket, encryption, app, scroll_down_instant, message_scroll),
         daemon=False,
     ).start()
 

@@ -1,10 +1,37 @@
 import time
-import sys
 import datetime
+import logging
 import random
+import platform
+import os
+import sys
 
 from argon2 import PasswordHasher
 from commands import *
+
+
+if platform.system() == "Linux":
+    folder_path = f"/home/{os.getlogin()}/.config/secure_chat/"
+else:
+    folder_path = f"C:\\Users\\{os.getlogin()}\\AppData\\Local\\Secure_Chat"
+
+
+if not os.path.exists(folder_path):
+    os.makedirs(folder_path)
+
+file_path = os.path.join(folder_path + "logs.log")
+
+logger = logging
+
+logger.basicConfig(
+    filename=file_path,
+    filemode="a",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+logger.getLogger("asyncio").setLevel(logging.WARNING)
 
 messages = []
 count_users = []
@@ -32,7 +59,15 @@ def server_console(client_map, update_user, backup):
                     print("Provide a name next to the command\n'/command user'")
 
             if server_console_input.startswith("/promote"):
-                promote("server", client_map, "server", username, update_user, True)
+                promote(
+                    "server",
+                    client_map,
+                    "server",
+                    username,
+                    update_user,
+                    True,
+                    logger=logger,
+                )
 
             elif server_console_input.startswith("/users"):
                 for client in client_map:
@@ -42,7 +77,15 @@ def server_console(client_map, update_user, backup):
                     print(client_map[client]["role"])
 
             elif server_console_input.startswith("/demote"):
-                promote("server", client_map, "server", username, update_user, False)
+                promote(
+                    "server",
+                    client_map,
+                    "server",
+                    username,
+                    update_user,
+                    False,
+                    logger=logger,
+                )
 
             elif server_console_input.startswith("/kick"):
                 for client, values in client_map.items():
@@ -54,6 +97,7 @@ def server_console(client_map, update_user, backup):
                             client_map,
                             share_messages,
                             encryption,
+                            logger,
                         )
                         break
                 else:
@@ -72,6 +116,7 @@ def server_console(client_map, update_user, backup):
                         current_timemonotinoc,
                         share_messages,
                         backup,
+                        logger,
                     )
                 except IndexError:
                     print("Make sure there is a duration (e.g. '/mute user 60')")
@@ -85,6 +130,7 @@ def server_console(client_map, update_user, backup):
                     current_timemonotinoc,
                     share_messages,
                     backup,
+                    logger,
                 )
 
 
@@ -131,7 +177,7 @@ def UpTime(up_time_, client_map):
         time.sleep(1)
 
 
-def get_messages(client_socket, encryption, app):
+def get_messages(client_socket, encryption, app, scroll_down_instant, meesage_scroll):
     while True:
         header = recv_exact(client_socket, 4)
 
@@ -188,6 +234,7 @@ def get_messages(client_socket, encryption, app):
             formatted_time = f"[{formatted_time}]"
 
             messages.append(f"{color}{formatted_time}{message}")
+            scroll_down_instant(meesage_scroll, messages)
 
         elif data_decrypted.startswith("SOCKET_CLOSING|"):
             data_decrypted = data_decrypted[len("SOCKET_CLOSING|") :]
@@ -198,6 +245,9 @@ def get_messages(client_socket, encryption, app):
 
         elif data_decrypted.startswith("USER_JOINED|"):
             messages.append(data_decrypted[12:])
+
+        elif data_decrypted.startswith("ALERTING_USER|"):
+            messages.append(data_decrypted[len("ALERTING_USER|") :])
 
         elif data_decrypted.startswith("SERVERUPTIME|"):
             server_uptime.append(data_decrypted[13:])
@@ -300,14 +350,18 @@ def handle_client(
                     encryption,
                 )
                 time.sleep(1)
+                logger.error(
+                    f"Detected blank username or blank password from {client_socket}"
+                )
                 client_socket.close()
                 print("username or password was blank\nClosing users connection.\n")
                 return
 
             if decrypted_data.startswith("LOGIN|"):
                 try:
-                    userid, _, password_, role = database.get_user(username)
-                    password_hasher.verify(password_, password)
+                    userid, _, hashed_password, role = database.get_user(username)
+                    password_hasher.verify(hashed_password, password)
+                    logger.info(f"Passed password verification for user '{username}")
                     print(f"Passed password verification for user '{username}'")
 
                 except Exception as e:
@@ -315,6 +369,11 @@ def handle_client(
                     print(
                         f"Password and it's hash did not match for user '{username}'\nClosing users connection."
                     )
+
+                    logger.error(
+                        "Password and it's hash did not match for user '{username}'\nClosing users connection."
+                    )
+
                     send_message_to_client(
                         "SOCKET_CLOSING|",
                         "#ffffff",
@@ -335,6 +394,9 @@ def handle_client(
                         client_socket,
                         encryption,
                     )
+                    logger.error(
+                        f"{client_socket} Entered a username which had more than 14 characters '{username}'"
+                    )
                     client_socket.close()
                     return
 
@@ -342,7 +404,7 @@ def handle_client(
 
                 if database.find_name(username) is False:
                     database.add_user(username, password_hash)
-                    userid, _, password_, role = database.get_user(username)
+                    userid, _, _, role = database.get_user(username)
 
                 else:
                     send_message_to_client(
@@ -355,6 +417,11 @@ def handle_client(
                     print(
                         f"{client_socket} Found same username that is registered before '{username}'"
                     )
+
+                    logger.error(
+                        f"{client_socket} Found same username that is registered before '{username}'"
+                    )
+
                     time.sleep(1)
                     client_socket.close()
                     return
@@ -369,6 +436,11 @@ def handle_client(
                 print(
                     f"{username} tried to join with an invalid tag\nClosed it's connection"
                 )
+
+                logger.error(
+                    f"{username} tried to join with an invalid tag.\nClient socket: {client_socket}"
+                )
+
                 time.sleep(1)
                 client_socket.close()
                 return
@@ -383,8 +455,13 @@ def handle_client(
                         encryption,
                     )
                     print(
-                        f"{username} tried to login with a username that is already online in this session.\nUsername '{username}'"
+                        f"{client_socket} tried to login with a username that is already online in this session.\nUsername '{username}'"
                     )
+
+                    logger.error(
+                        f"{client_socket} tried to login with a username that is already online in this session.\nUsername '{username}'"
+                    )
+
                     time.sleep(1)
                     client_socket.close()
                     return
@@ -445,13 +522,6 @@ def handle_client(
             )
 
             while True:
-                # share_messages(
-                #     up_time[-1],
-                #     client_socket,
-                #     client_map,
-                #     True,
-                # )
-
                 header = recv_exact(client_socket, 4)
                 if header is None:
                     break
@@ -507,10 +577,21 @@ def handle_client(
                 elif decrypted_data.startswith("COMMAND|"):
                     decrypted_data = decrypted_data[len("COMMAND|") :]
                     command = decrypted_data.split(" ")
-                    user_username = command[1].strip()
+                    try:
+                        user_username = command[1].strip()
+                    except IndexError:
+                        user_username = ""
+                        send_message_to_client(
+                            "ALERTING_USER|",
+                            "#ffffff",
+                            "Next time try to add a username instead of leaving it blank.",
+                            client_socket,
+                            encryption,
+                        )
 
                     if command[0] in commands and database.find_name(user_username):
                         print(f"{username} ENTERED: " + decrypted_data)
+                        logger.info(f"{username} Entered: {decrypted_data}")
 
                         commander_role = client_map[client_socket]["role"]
                         commander_username = client_map[client_socket]["username"]
@@ -522,6 +603,7 @@ def handle_client(
                                 commander_username,
                                 user_username,
                                 database.update_user,
+                                logger=logger,
                             )
 
                         elif decrypted_data.startswith("/demote"):
@@ -541,6 +623,7 @@ def handle_client(
                                 client_map,
                                 share_messages,
                                 encryption,
+                                logger,
                             )
 
                         elif decrypted_data.startswith("/mute"):
@@ -555,9 +638,16 @@ def handle_client(
                                     current_timemonotinoc,
                                     share_messages,
                                     backup,
+                                    logger,
                                 )
                             except IndexError:
-                                pass
+                                send_message_to_client(
+                                    "ALERTING_USER|",
+                                    "#ffffff",
+                                    "Next time try to add a duration instead of leaving it blank",
+                                    client_socket,
+                                    encryption,
+                                )
 
                         elif decrypted_data.startswith("/unmute"):
                             unmute(
@@ -568,15 +658,17 @@ def handle_client(
                                 current_timemonotinoc,
                                 share_messages,
                                 backup,
+                                logger,
                             )
                     else:
                         print("Command or username not found")
+                        logger.warning(f"{username}, Command or username not found!")
 
                 elif decrypted_data.startswith(("USER_DISCONNECTED|", "USER_JOINED|")):
                     if decrypted_data.startswith("USER_JOINED|"):
                         user_joined_count += 1
                         if user_joined_count >= 2:
-                            decrypted_data = f"{username} tired to change message tag which led to close it's connection."
+                            decrypted_data = f"{username} tried to change message tag which led to close it's connection."
                             share_messages(
                                 "SOCKET_CLOSING|",
                                 "#ffffff",
@@ -596,6 +688,9 @@ def handle_client(
                             print(
                                 f"{username} tried to change tag which led to close it's connection\n"
                             )
+
+                            logger.error(decrypted_data)
+
                             break
                         else:
                             share_messages(
@@ -607,6 +702,7 @@ def handle_client(
                             )
 
                             print(decrypted_data + joined_message)
+                            logger.info(joined_message)
                             messages.append(decrypted_data + joined_message)
 
                     if (
@@ -636,6 +732,9 @@ def handle_client(
                             print(
                                 f"{username} tried to change tag which led to close it's connection\n"
                             )
+
+                            logger.error(decrypted_data)
+
                             break
 
                         else:
@@ -647,8 +746,9 @@ def handle_client(
                                 client_map,
                             )
 
-                            print(quit_message)
-                            messages.append(decrypted_data)
+                            print(decrypted_data + quit_message)
+                            logger.info(quit_message)
+                            messages.append(decrypted_data + quit_message)
                             client_socket.close()
                             break
 
@@ -670,9 +770,8 @@ def handle_client(
                             client_map,
                             username,
                         )
-                        print(
-                            f"{username} tried to change tag which led to close it's connection\n"
-                        )
+                        print(error_message)
+                        logger.error(error_message)
                         break
 
             client_list.remove(client_socket)

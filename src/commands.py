@@ -94,9 +94,15 @@ def mute(
             )
 
         else:
+            logger.error(
+                f"Error. Could'nt find user client '{user_username}'Action was done by {commander_username}"
+            )
             print("Error. could'nt find user client")
 
     else:
+        logger.error(
+            f"Error. user role not found or comparing roles failed. Action was done by {commander_username}"
+        )
         print("Error. user role not found or comparing roles failed.")
 
 
@@ -145,7 +151,7 @@ def promote(
     client_map,
     commander_username,
     user_username,
-    update_database,
+    database,
     promote=True,
     logger=None,
 ):
@@ -164,7 +170,7 @@ def promote(
                 )
                 if logger:
                     logger.warning(
-                        f"{user_username} is already an admin.\nThis action was done by {commander_username}"
+                        f"{user_username} is already an admin. This action was done by {commander_username}"
                     )
 
                 return
@@ -178,7 +184,7 @@ def promote(
                 print(f"{user_username} is already at user role level.")
                 if logger:
                     logger.warning(
-                        f"{user_username} is already at user role level\nAction done by {commander_username}"
+                        f"{user_username} is already at user role level. Action done by {commander_username}"
                     )
                 return
             changed_role_name = list_roles[user_role_index - 1][0]
@@ -191,7 +197,7 @@ def promote(
         for client, values in client_map.items():
             if user_username == values["username"]:
                 client_map[client]["role"] = changed_role_name
-                update_database(changed_role_name, user_username)
+                database.update_database(changed_role_name, user_username)
                 print(message)
                 break
     else:
@@ -201,5 +207,20 @@ def promote(
 
         if logger:
             logger.error(
-                f"An error occured.\nEither no user role found or comparing roles failed\nAction done by {commander_username}\nUsername {user_username}"
+                f"An error occured. Either no user role found or comparing roles failed. Action done by {commander_username}. Username {user_username}"
             )
+
+
+def delete_user_from_database(
+    commander_role,
+    client_map,
+    commander_username,
+    user_username,
+    database,
+    logger=None,
+):
+    database.delete_user(user_username)
+    if logger:
+        logger.info(
+            f"Deleted {user_username} from database. Action was done by {commander_username}."
+        )

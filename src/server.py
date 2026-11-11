@@ -1,6 +1,7 @@
 import socket
 import threading
 import time
+import sys
 
 from encryption import *
 from threads import *
@@ -29,7 +30,7 @@ public_key_bytes = serialize_public_key(private_key)
 client_list = []
 messages = []
 
-database = DataBase("database.pb")
+database = DataBase("database.pb", logger)
 
 client_map = {}
 users_muted = {}
@@ -41,7 +42,7 @@ uptime_thread.start()
 server_console_thread = threading.Thread(
     target=server_console,
     daemon=False,
-    args=(client_map, database.update_user, users_muted),
+    args=(client_map, database, users_muted),
 ).start()
 
 

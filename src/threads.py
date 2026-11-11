@@ -4,7 +4,6 @@ import logging
 import random
 import platform
 import os
-import sys
 
 from argon2 import PasswordHasher
 from commands import *
@@ -39,13 +38,28 @@ server_uptime = []
 users_connected = []
 current_timemonotinoc = None
 user_color = []
+restricted_names = (
+    "USER_COUNT|",
+    "USER_COLOR|",
+    "USER_JOINED|",
+    "|USERS_LIST",
+    "USER_DISCONNECTED|",
+    "ALERTING_USER|",
+    "USER_MUTED|",
+    "USERS_CONNECTED|",
+    "SERVERUPTIME|",
+    "SOCKET_CLOSING|",
+    "CHAT|",
+    "LOGIN|",
+    "REGISTER|",
+)
 
-commands = ("/kick", "/mute", "/promote", "/demote", "/unmute")
+commands = ("/kick", "/mute", "/promote", "/demote", "/unmute", "/delete")
 
 password_hasher = PasswordHasher()
 
 
-def server_console(client_map, update_user, backup):
+def server_console(client_map, database, backup):
     while True:
         server_console_input = input("Server Console: ")
 
@@ -64,7 +78,7 @@ def server_console(client_map, update_user, backup):
                     client_map,
                     "server",
                     username,
-                    update_user,
+                    database,
                     True,
                     logger=logger,
                 )
@@ -82,9 +96,14 @@ def server_console(client_map, update_user, backup):
                     client_map,
                     "server",
                     username,
-                    update_user,
+                    database,
                     False,
                     logger=logger,
+                )
+
+            elif server_console_input.startswith("/delete"):
+                delete_user_from_database(
+                    "server", client_map, "server", username, database, logger
                 )
 
             elif server_console_input.startswith("/kick"):
@@ -357,6 +376,23 @@ def handle_client(
                 print("username or password was blank\nClosing users connection.\n")
                 return
 
+            if username in restricted_names:
+                send_message_to_client(
+                    "SOCKET_CLOSING|",
+                    "#ffffff",
+                    "Restricted name detected\nClosing connection.",
+                    client_socket,
+                    encryption,
+                )
+                print(
+                    f"{client_socket} tried to login with a restricted username which led to close it's connection."
+                )
+                logger.error(
+                    f"{client_socket} tried to login with a restricted username which led to close it's connection."
+                )
+                client_socket.close()
+                return
+
             if decrypted_data.startswith("LOGIN|"):
                 try:
                     userid, _, hashed_password, role = database.get_user(username)
@@ -425,6 +461,7 @@ def handle_client(
                     time.sleep(1)
                     client_socket.close()
                     return
+
             else:
                 send_message_to_client(
                     "SOCKET_CLOSING|",

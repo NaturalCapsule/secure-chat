@@ -5,8 +5,9 @@ import os
 
 
 class DataBase:
-    def __init__(self, file: str):
+    def __init__(self, file: str, logger):
         self.cursor, self.conn = self.database_file(file)
+        self.logger = logger
 
     def add_user(self, username, password):
         self.cursor.execute("""
@@ -21,14 +22,15 @@ class DataBase:
         """)
 
         try:
-            print("ADDING USERNAME")
             sql = "INSERT INTO users (username, password_hash) VALUES (?, ?)"
             self.cursor.execute(sql, (username, password))
 
             self.conn.commit()
             print(f"User '{username}' added successfully!")
+            self.logger.info(f"User '{username}' added successfully!")
 
         except sqlite3.IntegrityError as e:
+            self.logger.error(f"ERROR: {e}")
             print("ERROR: ", e)
 
     def delete_user(self, username):
@@ -39,12 +41,17 @@ class DataBase:
 
             self.conn.commit()
             if self.cursor.rowcount > 0:
-                print(f"Success: User '{username}' has been deleted.")
+                # print(f"Success: User '{username}' has been deleted.")
+                self.logger.info(f"Success: User '{username}' has been deleted.")
             else:
                 print(f"Notice: No user found with the username '{username}'.")
+                self.logger.info(
+                    f"Notice: No user found with the username '{username}'."
+                )
 
         except sqlite3.Error as error:
             print("Failed to delete data from SQLite table:", error)
+            self.logger.error(f"Failed to delete data from SQLite table: {error}")
 
     def database_file(self, file: str):
         if platform.system() in ("Linux", "Darwin"):
@@ -54,10 +61,13 @@ class DataBase:
 
         else:
             print("Unsupported OS detected\nExiting.")
+            self.logger.error("Unsupported OS detected. Exiting.")
             sys.exit()
             return
+
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
+            self.logger.info(f"Made a folder for database: {folder_path}")
         abs_path = os.path.join(folder_path + file)
 
         conn = sqlite3.connect(abs_path, check_same_thread=False)

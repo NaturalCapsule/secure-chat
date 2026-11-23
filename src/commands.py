@@ -17,6 +17,13 @@ def get_user_role(username, client_map):
     return False
 
 
+def get_user_encryption_key(user_client, client_map):
+    for client, values in client_map.items():
+        if user_client == client:
+            return client_map[user_client]["encryption"]
+    return False
+
+
 def get_user_client(username, client_map):
     for client, values in client_map.items():
         if username == values["username"]:

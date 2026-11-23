@@ -241,8 +241,13 @@ def get_messages(client_socket, encryption, app, scroll_down_instant, meesage_sc
             data_decrypted = data_decrypted[len("USER_COLOR|") :]
             user_color.append(data_decrypted)
 
-        elif data_decrypted.startswith("CHAT|"):
-            data_decrypted = data_decrypted[5:]
+        # elif data_decrypted.startswith("CHAT|"):
+        elif data_decrypted.startswith(("CHAT|", "PRIVATE_CHAT|")):
+            if data_decrypted.startswith("CHAT|"):
+                data_decrypted = data_decrypted[5:]
+            # data_decrypted = data_decrypted[5:]
+            elif data_decrypted.startswith("PRIVATE_CHAT|"):
+                data_decrypted = data_decrypted[len("PRIVATE_CHAT|") :]
             color = data_decrypted[:7]
             data_decrypted = data_decrypted[7:]
             timestamp_string, message = data_decrypted.split("]", 1)
@@ -610,6 +615,41 @@ def handle_client(
                             client_socket,
                             client_map,
                         )
+                elif decrypted_data.startswith("PRIVATE_CHAT|"):
+                    private_chat = decrypted_data[len("PRIVATE_CHAT|") :]
+                    try:
+                        message_time = datetime.datetime.now(datetime.UTC).isoformat()
+
+                        user_private_chat, private_chat_message = private_chat.split(
+                            " ", 1
+                        )
+
+                        user_private_chat = user_private_chat.split()[0][1:]
+
+                        user_client = get_user_client(user_private_chat, client_map)
+
+                        message = (
+                            f"[{message_time}] {username} (DM) > {private_chat_message}"
+                        )
+                        if user_client:
+                            user_key = get_user_encryption_key(user_client, client_map)
+                            send_message_to_client(
+                                "PRIVATE_CHAT|",
+                                user_color_,
+                                message,
+                                user_client,
+                                user_key,
+                            )
+                        else:
+                            send_message_to_client(
+                                "ALERTING_USER|",
+                                "#ffffff",
+                                f"{user_private_chat} not found.",
+                                client_socket,
+                                encryption,
+                            )
+                    except ValueError:
+                        pass
 
                 elif decrypted_data.startswith("COMMAND|"):
                     decrypted_data = decrypted_data[len("COMMAND|") :]

@@ -52,11 +52,18 @@ def key_bindings_(
             message_time = datetime.datetime.now()
             message_time = message_time.strftime("%I:%M %p")
 
+            message_tag = None
+
+            if input_buffer.text.startswith("@"):
+                message_tag = "PRIVATE_CHAT|"
+            else:
+                message_tag = "CHAT|"
+
             messages.append(
                 f"{user_color[0]}[{message_time}] {username} (You) > {input_buffer.text}\n"
             )
 
-            encrypted_data = encryption.encrypt(f"CHAT|{input_buffer.text}\n")
+            encrypted_data = encryption.encrypt(f"{message_tag}{input_buffer.text}\n")
 
             message_length = len(encrypted_data)
             header = message_length.to_bytes(4, byteorder="big")
